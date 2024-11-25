@@ -205,11 +205,8 @@ function createWindow() {
 
 function showWindow() {
     secondWindow.hide();
-    try {
+    if (process.platform === 'darwin') {
         app.show();
-    } catch (err) {
-        //console.log(err);
-        // this happens in windows, doesn't seem to affect anything though
     }
     mb.showWindow();
     setTimeout(() => {
@@ -221,11 +218,8 @@ var showWindowThrottle = lodash.throttle(showWindow, 100);
 
 function hideWindow() {
     mb.hideWindow();
-    try {
+    if (process.platform === 'darwin') {
         app.hide();
-    } catch (err) {
-        // console.log(err);
-        // not sure if this affects windows like app.show does.
     }
 }
 
@@ -269,6 +263,16 @@ app.whenReady().then(() => {
     })
 
     createWindow();
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow()
+        }
+    })
+    // did-become-active: show window via macOS App Switcher
+    app.on('did-become-active', () => {
+        if (!win || !secondWindow || win.isVisible() || secondWindow.isVisible()) return;
+        showWindow();
+    })
 
     var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
     if (fs.existsSync(hotkeyPath)) {
@@ -314,11 +318,7 @@ app.on("before-quit", async () => {
 })
 
 app.on('window-all-closed', () => {
-    app.quit()
-})
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow()
+    if (process.platform !== 'darwin') {
+        app.quit()
     }
 })
