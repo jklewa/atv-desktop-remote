@@ -21,25 +21,23 @@
     <body>
         <div class="pure-g">
             <div class="pure-u-1-3">
-                <div id="alwaysOnTopWrapper">
-                    <span class="keyTextAlt">H - hide</span>
-                    <!-- <input id="alwaysOnTopCheck" type="checkbox" href="javascript:;">
-                    <label for="alwaysOnTopCheck">Always on-top</label> -->
+                <div id="helpIconWrapper">
+                    <button id="helpIcon" class="simpleButton"><span class="keyText"><i class="fas fa-sm fa-question"></i></span></button>
                 </div>
             </div>
             <div class="pure-u-1-3">
                 <div id="powerButtonWrapper" class="center">
-                    <button data-key="power" class="simpleButton"><span class="keyText">Power</span><span class="keyTextAlt">P</span></button>
+                    <button data-key="power" class="simpleButton"><span class="keyText">Power</span></button>
                 </div>
             </div>
             <div class="pure-u-1-3">
                 <div id="exitLinkWrapper">
-                    <button id="exitLink" class="simpleButton"><span class="keyText">Quit</span><span class="keyTextAlt">Q (3x)</span></button>
+                    <button id="exitLink" class="simpleButton"><span class="keyText">Quit</span></button>
                 </div>
             </div>
             <div class="pure-u-1-1">
                 <div class="center">
-                    <h2 class="topText"><span id="topTextHeader">ATV Remote</span><span id="topTextKBLink"><a href="#" onclick="openKeyboardClick(event)">Use Keyboard</a></span></h2>
+                    <h2 class="topText"><span id="topTextHeader">ATV Remote</span></h2>
                     <div id="initText"> 
                         <p>If this is the first time this program has started, please be patient. It may take up to five minutes to get set up.</p>
                         <p>The Python library <strong>pyatv</strong> is being installed in the directory:</p>
@@ -71,7 +69,7 @@
                     </label><button onclick="javascript:;" class="simpleButton" id="pairButton">Submit</button>
                     
                     </div>
-                    <button id="cancelPairing" class="simpleButton"><span class="keyText">Cancel</span><span class="keyTextAlt">Cancel</span></button>
+                    <button id="cancelPairing" class="simpleButton"><span class="keyText">Cancel</span></button>
                 </div>
             </div>
             <div id="runningElements">
@@ -94,46 +92,46 @@
                         </table>
                         <table class="directionTable">
                                 <td>
-                                    <div data-key="volume_down" data-tippy-content="Lower Volume" class=" directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-down"></i></span><span class='keyTextAlt'>-, _</span></div>
+                                    <div data-key="volume_down" data-tippy-content="Lower Volume" class="directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-down"></i></span></div>
                                 </td>
                                 <td>
-                                    <div data-key="up" data-tippy-content="Up arrow" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-up"></i></span><span class='keyTextAlt'>Up</span></div>
+                                    <div data-key="up" data-tippy-content="Up arrow" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-up"></i></span></div>
                                 </td>
                                 <td>
-                                    <div data-key="volume_up" data-tippy-content="Raise Volume" class=" directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-up"></i></span><span class='keyTextAlt'>+, =</span></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div data-key="left" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-left"></i></span><span class='keyTextAlt'>Left</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="select" class="selectArrow directionArrows directionCircle"><span class='keyText'>Select</span><span class='keyTextAlt'>Enter</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="right" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-right"></i></span><span class='keyTextAlt'>Right</span></div>
+                                    <div data-key="volume_up" data-tippy-content="Raise Volume" class="directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-up"></i></span></div>
                                 </td>
                             </tr>
                             <tr>
                                 <td>
-                                    <div data-key="skip_backward" class="directionCircle"><span class='keyText'>Prev</span><span class='keyTextAlt'>P, [</span></div>
+                                    <div data-key="left" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-left"></i></span></div>
                                 </td>
                                 <td>
-                                    <div data-key="down" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-down"></i></span><span class='keyTextAlt'>Down</span></div>
+                                    <div data-key="select" class="selectArrow directionArrows directionCircle"><span class='keyText'>Select</span></div>
                                 </td>
                                 <td>
-                                    <div data-key="skip_forward" class="directionCircle"><span class='keyText'>Next</span><span class='keyTextAlt'>N, ]</span></div>
+                                    <div data-key="right" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-right"></i></span></div>
                                 </td>
                             </tr>
                             <tr>
                                 <td>
-                                    <div class="directionCircle" data-key="play_pause"><span class='keyText'><i class="fas fa-play"></i>&nbsp;<i class="fas fa-pause"></i></span><span class='keyTextAlt'>Space</span></div>
+                                    <div data-key="skip_backward" class="directionCircle"><span class='keyText'>Prev</span></div>
                                 </td>
                                 <td>
-                                    <div class="directionCircle menuButton" data-key="menu"><span class='keyText'>Menu</span><span class='keyTextAlt'>Esc, <i class="fas fa-backspace"></i></span></div>
+                                    <div data-key="down" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-down"></i></span></div>
                                 </td>
                                 <td>
-                                    <div class="directionCircle" data-key="home"><span class='keyText'>TV</span><span class='keyTextAlt'>T, L</span></div>
+                                    <div data-key="skip_forward" class="directionCircle"><span class='keyText'>Next</span></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="directionCircle" data-key="play_pause"><span class='keyText'><i class="fas fa-play"></i>&nbsp;<i class="fas fa-pause"></i></span></div>
+                                </td>
+                                <td>
+                                    <div class="directionCircle menuButton" data-key="menu"><span class='keyText'>Menu</span></div>
+                                </td>
+                                <td>
+                                    <div class="directionCircle" data-key="home"><span class='keyText'>TV</span></div>
                                 </td>
                             </tr>
                         </table>
@@ -148,6 +146,61 @@
 
             </div>
 
+            <!-- Keyboard Shortcuts Overlay -->
+            <div id="keyboardShortcuts">
+                <button id="closeShortcuts"><i class="fas fa-times"></i></button>
+                <h2 class="center">Keyboard Shortcuts</h2>
+                <div class="shortcutGrid">
+                    <div class="shortcutItem">
+                        <span>Navigation</span>
+                        <span class="shortcutKey">Arrow Keys</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Select</span>
+                        <span class="shortcutKey">Enter</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Play/Pause</span>
+                        <span class="shortcutKey">Space</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Menu</span>
+                        <span class="shortcutKey">Esc</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>TV</span>
+                        <span class="shortcutKey">T, L</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Previous</span>
+                        <span class="shortcutKey">P, [</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Next</span>
+                        <span class="shortcutKey">N, ]</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Volume Down</span>
+                        <span class="shortcutKey">-, _</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Volume Up</span>
+                        <span class="shortcutKey">+, =</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Power</span>
+                        <span class="shortcutKey">P</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Hide Window</span>
+                        <span class="shortcutKey">H</span>
+                    </div>
+                    <div class="shortcutItem">
+                        <span>Quit</span>
+                        <span class="shortcutKey">Q (3x)</span>
+                    </div>
+                </div>
+            </div>
 
             <div id="cmdWrapper">
                 <div id="cmdFade"></div>

@@ -8,8 +8,6 @@ var ipcRenderer = electron.ipcRenderer;
 var mb = remote.getGlobal('MB');
 const { Menu, MenuItem } = remote
 const path = require('path');
-//var atv = electron.remote.require('./remote').atv;
-//var NowPlayingInfo = atv.NowPlayingInfo;
 var nativeTheme = electron.remote.nativeTheme;
 var dialog = electron.remote.dialog;
 var device = false;
@@ -89,10 +87,6 @@ const keyDesc = {
     'p': 'Power'
 }
 
-ipcRenderer.on('shortcutWin', (event) => {
-    toggleAltText(true);
-})
-
 ipcRenderer.on('scanDevicesResult', (event, ks) => {
     createDropdown(ks);
 })
@@ -119,6 +113,7 @@ ipcRenderer.on('sendCommand', (event, key) => {
     console.log(`sendCommand from main: ${key}`)
     sendCommand(key);
 })
+
 ipcRenderer.on('kbfocus', () => {
     sendMessage('kbfocus')
 })
@@ -131,10 +126,6 @@ ipcRenderer.on('input-change', (event, data) => {
     sendMessage("settext", {text: data});
 });
 
-window.addEventListener('blur', e => {
-    toggleAltText(true);
-})
-
 window.addEventListener('beforeunload', async e => {
     delete e['returnValue'];
     try {
@@ -146,37 +137,24 @@ window.addEventListener('beforeunload', async e => {
         ipcRenderer.invoke('debug', 'connection closed')
     } catch (err) {
         console.log(err);
-        //ipcRenderer.invoke('debug', `Error: ${err}`)
     }
 });
 
-
-
-function toggleAltText(tf) {
-    if (tf) {
-        $(".keyText").show();
-        $(".keyTextAlt").hide();
+function toggleKeyboardShortcuts() {
+    const shortcuts = $("#keyboardShortcuts");
+    if (shortcuts.is(":visible")) {
+        shortcuts.fadeOut(200);
     } else {
-        $(".keyText").hide();
-        $(".keyTextAlt").show();
+        shortcuts.fadeIn(200);
     }
 }
 
-function openKeyboardClick(event) {
-    event.preventDefault();
-    openKeyboard();
-}
-
-function openKeyboard() {
-    ipcRenderer.invoke('openInputWindow')
-    setTimeout(() => { // yes, this is done but it works
-        sendMessage("gettext")
-    }, 10)
-}
-
 window.addEventListener('keyup', e => {
-    if (e.key == 'Alt') {
-        toggleAltText(true);
+    // Close shortcuts overlay when Escape is pressed
+    if (e.key === 'Escape' && $("#keyboardShortcuts").is(":visible")) {
+        toggleKeyboardShortcuts();
+        e.preventDefault();
+        return;
     }
 });
 
@@ -185,13 +163,19 @@ window.addEventListener('app-command', (e, cmd) => {
 })
 
 window.addEventListener('keydown', e => {
-    //console.log(e);
     var key = e.key;
     if (key == ' ') key = 'Space';
     var mods = ["Control", "Shift", "Alt", "Option", "Fn", "Hyper", "OS", "Super", "Meta", "Win"].filter(mod => { return e.getModifierState(mod) })
-    if (mods.length > 0 && mods[0] == 'Alt') {
-        toggleAltText(false);
+
+    // If shortcuts overlay is visible, only allow Escape key
+    if ($("#keyboardShortcuts").is(":visible")) {
+        if (key === 'Escape') {
+            toggleKeyboardShortcuts();
+        }
+        e.preventDefault();
+        return;
     }
+
     var shifted = false;
     if (mods.length == 1 && mods[0] == "Shift") {
         shifted = true;
@@ -229,28 +213,12 @@ window.addEventListener('keydown', e => {
             return false;
         }
     })
-
-    // console.log(`fnd: ${fnd}`)
-    // if (!fnd) {
-    //     console.log('!!! here')
-
-    //     Object.keys(keymap).forEach(k => {
-    //         if (key == k) {
-    //             fnd = true;
-    //             sendCommand(k);
-    //             e.preventDefault();
-    //             return false;
-    //         }
-    //     })
-    // }
-
 })
 
 function createDropdown(ks) {
     $("#loader").hide();
     var txt = "";
     $("#statusText").hide();
-    //setStatus("Select a device");
     $("#pairingLoader").html("")
     $("#pairStepNum").html("1");
     $("#pairProtocolName").html("AirPort");
@@ -314,8 +282,6 @@ function createATVDropdown() {
         dropdownAutoWidth: true,
         minimumResultsForSearch: Infinity
     })
-
-
 
     $("#remoteDropdown").on('change', () => {
         var vl = $("#remoteDropdown").val();
@@ -397,7 +363,6 @@ function getWorkingPath() {
 
 function isConnected() {
     return atv_connected
-        //return !!(device && device.connection)
 }
 
 async function askQuestion(msg) {
@@ -410,24 +375,20 @@ async function askQuestion(msg) {
     return response.response == 1
 }
 
-
 function startPairing(dev) {
     $("#initText").hide();
-    //setStatus("Enter the pairing code");
     $("#results").hide();
     $("#pairButton").on('click', () => {
         submitCode();
         return false;
     });
     $("#pairCodeElements").show();
-    //ipcRenderer.invoke('startPair', dev);
     ws_startPair(dev);
 }
 
 function submitCode() {
     var code = $("#pairCode").val();
     $("#pairCode").val("");
-    //ipcRenderer.invoke('finishPair', code);
     if ($("#pairStepNum").text() == "1") {
         ws_finishPair1(code)
     } else {
@@ -457,20 +418,16 @@ function showKeyMap() {
     });
     $(`[data-key="Tv"]`).on('mouseup mouseleave', function(e) {
         var key = $(this).data('key');
-        if (!tvTimer) return; // already send long press
+        if (!tvTimer) return;
         clearTimeout(tvTimer);
         tvTimer = false;
         if (e.type == 'mouseleave') return;
         sendCommand('Tv');
     });
-    var creds = _getCreds();
-    if (Object.keys(creds).indexOf("Companion") > -1) {
-        $("#topTextHeader").hide();
-        $("#topTextKBLink").show();
-    } else {
-        $("#topTextHeader").show();
-        $("#topTextKBLink").hide();
-    }
+
+    // Initialize help icon and close button click handlers
+    $("#helpIcon").off('click').on('click', toggleKeyboardShortcuts);
+    $("#closeShortcuts").off('click').on('click', toggleKeyboardShortcuts);
 }
 
 var connecting = false;
@@ -533,10 +490,8 @@ function startScan() {
     $("#atvDropdownContainer").html("");
     setStatus("Please wait, scanning...")
     $("#pairingLoader").html(getLoader());
-    //ipcRenderer.invoke('scanDevices');
     ws_startScan();
 }
-
 
 function handleDarkMode() {
     var uimode = localStorage.getItem("uimode") || "systemmode";
@@ -604,7 +559,6 @@ function subMenuClick(event) {
 }
 
 async function confirmExit() {
-    // I decided against this, this behavior annoys me in other programs
     electron.remote.app.quit();
 }
 
@@ -640,9 +594,8 @@ function toggleAlwaysOnTop(event) {
 }
 
 async function helpMessage() {
-    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
+    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon in the bottom right to see all keyboard shortcuts.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
 }
-
 
 async function init() {
     handleDarkMode();
@@ -652,7 +605,6 @@ async function init() {
         setTimeout(() => {
                 confirmExit();
             }, 1)
-            //electron.remote.app.quit();
     })
     $("#cancelPairing").on('click', () => {
         console.log('cancelling');
@@ -691,18 +643,14 @@ function hideAppMenus() {
 
 async function checkEnv() {
     var isProd = await ipcRenderer.invoke('isProduction')
-
     if (isProd) return hideAppMenus();
-
-    // dev environment
-    //remote.getCurrentWindow().webContents.toggleDevTools({ mode: 'detach' });
-
 }
 
 function themeUpdated() {
     console.log('theme style updated');
     handleDarkMode();
 }
+
 try {
     nativeTheme.removeAllListeners();
 } catch (err) {}

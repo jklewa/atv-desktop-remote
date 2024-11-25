@@ -24,9 +24,7 @@ a:hover,
 a:active {
     color: black;
 }
-#topTextKBLink {
-    display:none;
-}
+
 #exitLinkWrapper {
     cursor: pointer;
 }
@@ -68,16 +66,6 @@ a:active {
     border: 1px solid black;
     border-radius: 10px;
     background-color: white;
-}
-
-#alwaysOnTopCheck {
-    margin-left: 5px;
-    margin-top: 10px;
-}
-
-#alwaysOnTopWrapper {
-    margin: 10px;
-    font-size: 18px;
 }
 
 .topText {
@@ -264,10 +252,6 @@ aside {
     height: 10px;
 }
 
-.keyTextAlt {
-    display: none;
-}
-
 .directionCircle {
     cursor: pointer;
     /* box-shadow: 0 0 10px 0px rgba(255, 255, 255, 0); */
@@ -345,12 +329,88 @@ aside {
     opacity: 0.50;
 }
 
+/* Keyboard shortcuts overlay */
+#keyboardShortcuts {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.97);
+    z-index: 999;
+    padding: 20px;
+    overflow-y: auto;
+}
 
-/* .darkMode .select2-container {
-    background-color: #333;
+#closeShortcuts {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    transition: background-color 0.2s ease;
+}
+
+#closeShortcuts:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.darkMode #closeShortcuts {
+    background: rgba(255, 255, 255, 0.1);
     color: white;
-} */
+}
 
+.darkMode #closeShortcuts:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.darkMode #keyboardShortcuts {
+    background: rgba(0, 0, 0, 0.97);
+}
+
+.shortcutGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.shortcutItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ddd;
+}
+
+.darkMode .shortcutItem {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #333;
+}
+
+.shortcutKey {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #eee;
+    margin-left: 10px;
+}
+
+.darkMode .shortcutKey {
+    background: #333;
+}
 
 /* input.html styles */
 
@@ -379,10 +439,6 @@ aside {
     font-size: 24px;
 }
 
-/* .large-text-input-wrapper.bad::after {
-    content: '⚫️';
-    opacity: 0.5;
-} */
 .large-text-input-wrapper.bad::after {
     content: '⚪️';
     opacity: 0.5;
@@ -425,6 +481,7 @@ aside {
     font-size: 0.8em;
     color: #555;
 }
+
 .darkMode .info-text-italics {
     font-style: italic;
     margin-left: 50px;
