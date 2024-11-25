@@ -194,14 +194,6 @@ async function startServer() {
         proc = spawn(sh_path, { detached: false })
     }
 
-    // Set up startup timeout
-    const startupTimeout = setTimeout(() => {
-        if (!serverRunning) {
-            console.log('Server startup timed out');
-            proc.kill();  // This will trigger the exit handler
-        }
-    }, 10000);  // 10 second timeout
-
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });
     errorBuffer = [];
@@ -215,7 +207,6 @@ async function startServer() {
     })
 
     function handleServerExit(code, signal) {
-        clearTimeout(startupTimeout);
         serverRunning = false;
         proc = null;  // Clear the process reference
 
