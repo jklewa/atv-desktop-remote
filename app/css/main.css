@@ -176,6 +176,16 @@ aside {
     padding: 1em;
 }
 
+.grab-bar {
+    height: 10px;
+    cursor: grab;
+    -webkit-app-region: drag;
+    background-color: rgb(226, 226, 226);
+}
+.darkMode .grab-bar {
+    background-color: rgb(128, 128, 128);
+}
+
 #statusText {
     display: none;
     position: fixed;
