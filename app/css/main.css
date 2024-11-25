@@ -30,6 +30,9 @@ a:active {
 #exitLinkWrapper {
     cursor: pointer;
 }
+#powerButtonWrapper {
+    cursor: pointer;
+}
 
 #initText {
     text-align: left; 

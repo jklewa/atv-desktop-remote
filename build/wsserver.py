@@ -208,6 +208,24 @@ async def parseRequest(j, websocket):
                 r = await getattr(active_remote, key)(taction)
             #print (r)
 
+    if cmd == "turnon":
+        if active_device:
+            try:
+                await active_device.power.turn_on()
+                await sendCommand(websocket, "power_status", "on")
+            except Exception as ex:
+                print(f"Error turning on device: {ex}", flush=True)
+                await sendCommand(websocket, "power_error", str(ex))
+
+    if cmd == "turnoff":
+        if active_device:
+            try:
+                await active_device.power.turn_off()
+                await sendCommand(websocket, "power_status", "off")
+            except Exception as ex:
+                print(f"Error turning off device: {ex}", flush=True)
+                await sendCommand(websocket, "power_error", str(ex))
+
 async def close_active_device():
     try:
         if active_device:
@@ -288,4 +306,3 @@ if __name__ == "__main__":
 
     asyncio.set_event_loop(loop)
     loop.run_until_complete(main(port))
-

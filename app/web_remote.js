@@ -16,6 +16,7 @@ var device = false;
 var qPresses = 0;
 var playstate = false;
 var previousKeys = []
+var powerState = true;
 
 const ws_keymap = {
     "ArrowUp": "up",
@@ -36,7 +37,8 @@ const ws_keymap = {
     "+": "volume_up",
     "=": "volume_up",
     "-": "volume_down",
-    "_": "volume_down"
+    "_": "volume_down",
+    "p": "power"
 }
 
 const keymap = {
@@ -70,7 +72,8 @@ const niceButtons = {
     "TV": "Tv",
     "play/pause": "play_pause",
     'Lower Volume': 'volume_down',
-    'Raise Volume': 'volume_up'
+    'Raise Volume': 'volume_up',
+    'Power': 'power'
 }
 
 const keyDesc = {
@@ -82,7 +85,8 @@ const keyDesc = {
     'Backspace': 'Menu',
     'Escape': 'Menu',
     't': 'TV Button',
-    'l': 'Long-press TV Button'
+    'l': 'Long-press TV Button',
+    'p': 'Power'
 }
 
 ipcRenderer.on('shortcutWin', (event) => {
@@ -364,6 +368,12 @@ async function sendCommand(k, shifted) {
         var pptxt = rcmd == "Pause" ? "Play" : "Pause";
         el.find('.keyText').html(pptxt);
     }
+    if (rcmd === 'power') {
+        powerState = !powerState;
+        sendMessage(powerState ? 'turnon' : 'turnoff');
+        showAndFade(powerState ? 'Turn On' : 'Turn Off');
+        return;
+    }
     console.log(`Keydown: ${k}, sending command: ${rcmd} (shifted: ${shifted})`)
     previousKeys.push(rcmd);
     if (previousKeys.length > 10) previousKeys.shift()
@@ -437,6 +447,10 @@ function showKeyMap() {
                 tvTimer = false;
                 sendCommand('LongTv')
             }, 1000);
+        } else if (key == "power") {
+            powerState = !powerState;
+            sendMessage(powerState ? 'turnon' : 'turnoff');
+            showAndFade(powerState ? 'Turn On' : 'Turn Off');
         } else {
             sendCommand(key);
         }
