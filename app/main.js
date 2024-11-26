@@ -78,6 +78,7 @@ function createInputWindow() {
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
+        if (mb.window.isAlwaysOnTop()) return;
         showWindowThrottle();
     });
     secondWindow.on("blur", () => {
@@ -91,7 +92,7 @@ function createInputWindow() {
 function createWindow() {
     mb = menubar({
         preloadWindow: preloadWindow,
-        showDockIcon: false,
+        showDockIcon: true,
         browserWindow: {
             width: 300,
             height: 500,
@@ -116,7 +117,6 @@ function createWindow() {
             app.exit();
         })
         win.on('show', () => {
-            win.webContents.send('shortcutWin');
             if (handleVolumeButtonsGlobal) handleVolume();
         })
 
@@ -270,7 +270,8 @@ app.whenReady().then(() => {
     })
     // did-become-active: show window via macOS App Switcher
     app.on('did-become-active', () => {
-        if (!win || !secondWindow || win.isVisible() || secondWindow.isVisible()) return;
+        if (!win || !secondWindow || win.isDestroyed() || secondWindow.isDestroyed()) return;
+        if (win.isVisible() || secondWindow.isVisible() || win.isAlwaysOnTop()) return;
         showWindow();
     })
 
@@ -289,7 +290,6 @@ app.whenReady().then(() => {
             } else {
                 showWindow();
             }
-            win.webContents.send('shortcutWin');
         })
     } else {
         globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
@@ -298,7 +298,6 @@ app.whenReady().then(() => {
             } else {
                 showWindow();
             }
-            win.webContents.send('shortcutWin');
         })
     }
     var version = app.getVersion();

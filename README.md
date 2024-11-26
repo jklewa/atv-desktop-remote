@@ -19,7 +19,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 ## Usage
 
  1. All of the keys are mapped to the keyboard when the application is open (pressing return or enter on the keyboard for select, delete for Menu, etc).
- 2. Press `Option`, or `Alt` on Windows, to see what the characters are mapped to when the application is open.
+ 2. To see what the characters are mapped to when the application is open, click the question mark icon.
 
 
  ## Running

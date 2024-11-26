@@ -77,7 +77,6 @@ function startWebsocket() {
         console.log('ws open');
         if (scanWhenOpen) ws_startScan();
         //sendMessage("scan");
-        checkEnv();
         init().then(() => {
             console.log('init complete');
         })

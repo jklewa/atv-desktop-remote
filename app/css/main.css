@@ -18,11 +18,18 @@ body {
     overflow-x: hidden;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    margin: 10px 0;
+}
+
 a:link,
 a:visited,
 a:hover,
 a:active {
     color: black;
+}
+#topTextKBLink {
+    display:none;
 }
 
 #exitLinkWrapper {
@@ -181,6 +188,11 @@ aside {
     cursor: grab;
     -webkit-app-region: drag;
     background-color: rgb(226, 226, 226);
+}
+.grab-bar:active {
+    cursor: -webkit-grabbing;
+    cursor: -moz-grabbing;
+    cursor: grabbing;
 }
 .darkMode .grab-bar {
     background-color: rgb(128, 128, 128);

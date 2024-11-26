@@ -149,6 +149,18 @@ function toggleKeyboardShortcuts() {
     }
 }
 
+function openKeyboardClick(event) {
+    event.preventDefault();
+    openKeyboard();
+}
+
+function openKeyboard() {
+    ipcRenderer.invoke('openInputWindow')
+    setTimeout(() => { // yes, this is done but it works
+        sendMessage("gettext")
+    }, 10)
+}
+
 window.addEventListener('keyup', e => {
     // Close shortcuts overlay when Escape is pressed
     if (e.key === 'Escape' && $("#keyboardShortcuts").is(":visible")) {
@@ -418,12 +430,21 @@ function showKeyMap() {
     });
     $(`[data-key="Tv"]`).on('mouseup mouseleave', function(e) {
         var key = $(this).data('key');
-        if (!tvTimer) return;
+        if (!tvTimer) return;  // already send long press
         clearTimeout(tvTimer);
         tvTimer = false;
         if (e.type == 'mouseleave') return;
         sendCommand('Tv');
     });
+
+    var creds = _getCreds();
+    if (Object.keys(creds).indexOf("Companion") > -1) {
+        $("#topTextHeader").hide();
+        $("#topTextKBLink").show();
+    } else {
+        $("#topTextHeader").show();
+        $("#topTextKBLink").hide();
+    }
 
     // Initialize help icon and close button click handlers
     $("#helpIcon").off('click').on('click', toggleKeyboardShortcuts);
@@ -594,7 +615,7 @@ function toggleAlwaysOnTop(event) {
 }
 
 async function helpMessage() {
-    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon in the bottom right to see all keyboard shortcuts.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
+    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
 }
 
 async function init() {
@@ -633,17 +654,6 @@ async function init() {
     } else {
         startScan();
     }
-}
-
-function hideAppMenus() {
-    try {
-        remote.app.dock.hide();
-    } catch (err) {}
-}
-
-async function checkEnv() {
-    var isProd = await ipcRenderer.invoke('isProduction')
-    if (isProd) return hideAppMenus();
 }
 
 function themeUpdated() {
