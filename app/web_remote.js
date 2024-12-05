@@ -14,7 +14,6 @@ var device = false;
 var qPresses = 0;
 var playstate = false;
 var previousKeys = []
-var powerState = true;
 
 const ws_keymap = {
     "ArrowUp": "up",
@@ -124,6 +123,11 @@ ipcRenderer.on('wsserver_started', () => {
 
 ipcRenderer.on('input-change', (event, data) => {
     sendMessage("settext", {text: data});
+});
+
+ipcRenderer.on('power_status', (event, isOn) => {
+    console.log(`power_status: ${isOn}`)
+    showAndFade(isOn ? 'Device On' : 'Device Off');
 });
 
 window.addEventListener('beforeunload', async e => {
@@ -347,9 +351,8 @@ async function sendCommand(k, shifted) {
         el.find('.keyText').html(pptxt);
     }
     if (rcmd === 'power') {
-        powerState = !powerState;
-        sendMessage(powerState ? 'turnon' : 'turnoff');
-        showAndFade(powerState ? 'Turn On' : 'Turn Off');
+        sendMessage("power_toggle");
+        showAndFade("Power");
         return;
     }
     console.log(`Keydown: ${k}, sending command: ${rcmd} (shifted: ${shifted})`)
@@ -421,9 +424,8 @@ function showKeyMap() {
                 sendCommand('LongTv')
             }, 1000);
         } else if (key == "power") {
-            powerState = !powerState;
-            sendMessage(powerState ? 'turnon' : 'turnoff');
-            showAndFade(powerState ? 'Turn On' : 'Turn Off');
+            sendMessage("power_toggle");
+            showAndFade("Power");
         } else {
             sendCommand(key);
         }
@@ -669,5 +671,4 @@ nativeTheme.on('updated', themeUpdated);
 $(function() {
     var wp = getWorkingPath();
     $("#workingPathSpan").html(`<strong>${wp}</strong>`)
-    ipcRenderer.invoke('isWSRunning')
 })

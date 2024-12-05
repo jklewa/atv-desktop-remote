@@ -182,6 +182,8 @@ async def parseRequest(j, websocket):
             kblistener = ATVKeyboardListener()
             device.keyboard.listener = kblistener
             await sendCommand(websocket, "connected")
+            power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
+            await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
         except Exception as ex:
             print ("Failed to connect")
             await sendCommand(websocket, "connection_failure")
@@ -189,7 +191,9 @@ async def parseRequest(j, websocket):
     if cmd == "is_connected":
         ic = "true" if active_remote else "false"
         await sendCommand(websocket, "is_connected", ic)
-        #await active_remote.menu()
+        if active_remote:
+            power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
+            await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
     
     if cmd == "key":
         valid_keys = ['play_pause', 'left', 'right', 'down', 'up', 'select', 'menu', 'top_menu', 'home', 'home_hold', 'skip_backward', 'skip_forward', 'volume_up', 'volume_down']
@@ -208,22 +212,26 @@ async def parseRequest(j, websocket):
                 r = await getattr(active_remote, key)(taction)
             #print (r)
 
-    if cmd == "turnon":
+    if cmd == "power_status":
         if active_device:
             try:
-                await active_device.power.turn_on()
-                await sendCommand(websocket, "power_status", "on")
+                power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
+                await sendCommand(websocket, "power_status", power_status)
             except Exception as ex:
-                print(f"Error turning on device: {ex}", flush=True)
+                print(f"Error getting power status: {ex}", flush=True)
                 await sendCommand(websocket, "power_error", str(ex))
 
-    if cmd == "turnoff":
+    if cmd == "power_toggle":
         if active_device:
             try:
-                await active_device.power.turn_off()
-                await sendCommand(websocket, "power_status", "off")
+                target_power_state = "off" if active_device.power.power_state == pyatv.const.PowerState.On else "on"
+                if target_power_state == "off":
+                    await active_device.power.turn_off()
+                else:
+                    await active_device.power.turn_on()
+                await sendCommand(websocket, "power_status", target_power_state)
             except Exception as ex:
-                print(f"Error turning off device: {ex}", flush=True)
+                print(f"Error toggling power: {ex}", flush=True)
                 await sendCommand(websocket, "power_error", str(ex))
 
 async def close_active_device():

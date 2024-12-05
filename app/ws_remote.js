@@ -41,7 +41,7 @@ function sendMessage(command, data) {
         var cmd_ar = pending.shift();
         ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
     }
-    console.log(`sendMessage: {cmd:${command}, data:${data}}`)
+    console.log(`sendMessage: {cmd:${command}, data:${JSON.stringify(data)}}`)
     ws.send(JSON.stringify({ cmd: command, data: data }))
 }
 
@@ -96,7 +96,7 @@ function startWebsocket() {
     });
 
     ws.on('message', function message(data) {
-        console.log('received: %s', data);
+        console.log('received: %s', data.toString());
         var j = JSON.parse(data);
         if (j.command == "scanResult") {
             console.log(`Results: ${j.data}`)
@@ -135,11 +135,17 @@ function startWebsocket() {
         if (j.command == "kbfocus-status") {
             ipcRenderer.invoke('kbfocus-status', j.data);
         }
+        if (j.command == "power_status") {
+            console.log(`power status: ${j.data}`)
+            const isOn = j.data.toLowerCase() === "on";
+            ipcRenderer.invoke("power_status", isOn);
+        }
+        if (j.command == "power_error") {
+            console.log(`power error: ${j.data}`)
+            ipcRenderer.invoke("power_error", j.data);
+        }
     });
 }
-
-
-
 
 function ws_is_connected() {
     return new Promise((resolve, reject) => {
@@ -149,7 +155,6 @@ function ws_is_connected() {
         })
         sendMessage("is_connected");
     })
-
 }
 
 function ws_startScan() {
@@ -242,7 +247,6 @@ function ws_init() {
             checkWSConnection()
         }, 5000);
     }, 15000)
-
 }
 
 function incReady() {

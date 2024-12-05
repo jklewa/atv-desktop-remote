@@ -156,10 +156,6 @@ function createWindow() {
         ipcMain.handle('isProduction', (event) => {
             return (!process.defaultApp);
         });
-        ipcMain.handle('isWSRunning', (event, arg) => {
-            console.log('isWSRunning');
-            if (server_runner.isServerRunning()) win.webContents.send('wsserver_started')
-        })
 
         ipcMain.handle('closeInputOpenRemote', (event, arg) => {
             console.log('closeInputOpenRemote');
@@ -178,6 +174,13 @@ function createWindow() {
         })
         ipcMain.handle('kbfocus', () => {
             win.webContents.send('kbfocus');
+        })
+        ipcMain.handle('power_status', (event, arg) => {
+            console.log('power_status', arg);
+            win.webContents.send('power_status', arg);
+        })
+        ipcMain.handle('power_error', (event, arg) => {
+            console.error('power_error', arg);
         })
 
         powerMonitor.addListener('resume', event => {
