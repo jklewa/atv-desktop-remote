@@ -8,7 +8,21 @@
         "productName": "ATV Remote",
         "appId": "com.electron.atvMacRemote",
         "mac": {
-            "category": "public.app-category.utilities"
+            "category": "public.app-category.utilities",
+            "target": [
+                "dmg"
+            ]
+        },
+        "dmg": {
+            "writeUpdateInfo": false
+        },
+        "win": {
+            "target": [
+                "nsis"
+            ]
+        },
+        "nsis": {
+            "differentialPackage": false
         },
         "extraFiles": [
             "server/wsserver.py"
