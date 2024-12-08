@@ -1,10 +1,8 @@
-node_modules
-app/node_modules
+node_modules/
+dist/
+env/
+env_x86/
+*.log
 .DS_Store
-dist
-atv_ws_env
-old
-*.gz
-pytest
-build/pyscripts.js
+app/pyscripts.js
 stopserver

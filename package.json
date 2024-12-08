@@ -15,8 +15,10 @@
         ]
     },
     "scripts": {
+        "prestart": "node build/create_python_embed.js",
         "start": "electron app",
         "postinstall": "electron-builder install-app-deps",
+        "prebuild": "node build/create_python_embed.js",
         "build": "npx electron-builder -m",
         "docker-build": "./electron_docker.sh 'npm run build:win'",
         "build:win": "npx electron-builder -w",

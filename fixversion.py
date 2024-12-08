@@ -1,5 +1,17 @@
+#!/usr/bin/env python3
 import json
+import os
 import sys
+import subprocess
+import platform
+
+def run_npm_install(directory='.'):
+    abspath = os.path.abspath(directory)
+    response = input(f"Do you want to run 'npm install' in {abspath}? (y/n): ")
+    if response.lower() == 'y':
+        # Use powershell on Windows, otherwise use bash
+        shell = True if platform.system() == 'Windows' else False
+        subprocess.run(['npm', 'install'], cwd=abspath, shell=shell)
 
 args = sys.argv[1:]
 
@@ -9,14 +21,21 @@ app_pkg = json.load(open('app/package.json'))
 appver = app_pkg['version']
 
 if len(args) > 0:
-	newver = args[0]
+    newver = args[0]
 else:
-	newver = ver
+    newver = ver
+print(f'Updating package.json and app/package.json to {newver}')
 
 build_pkg['version'] = newver
 app_pkg['version'] = newver
 
+with open('app/package.json', 'w') as f:
+	json.dump(app_pkg, f, indent=4)
+	f.write('\n')
+with open('package.json', 'w') as f:
+	json.dump(build_pkg, f, indent=4)
+	f.write('\n')
 
-json.dump(app_pkg, open('app/package.json', 'w'), indent=4)
-json.dump(build_pkg, open('package.json', 'w'), indent=4)
-
+# Prompt for npm install in both directories
+run_npm_install()  # Root directory
+run_npm_install('app')  # App directory

@@ -1,30 +1,37 @@
 const fs = require('fs');
+const path = require('path');
 
-const out_filename = `pyscripts.js`
+// Define input and output paths
+const serverDir = path.join(__dirname, '..', 'server');
+const outFile = path.join(__dirname, '..', 'app', 'pyscripts.js');
 
-var input_files = ['wsserver.py', 'start_server.bat', 'start_server.sh']
+// Define the files to embed
+const inputFiles = [
+    path.join(serverDir, 'wsserver.py'),
+    path.join(serverDir, 'start_server.bat'),
+    path.join(serverDir, 'start_server.sh')
+];
 
-var output_text = "";
+// Create files object
+const files = {};
+inputFiles.forEach(filePath => {
+    const fileName = path.basename(filePath);
+    try {
+        files[fileName] = fs.readFileSync(filePath, { encoding: 'utf-8' });
+    } catch (err) {
+        console.error(`Error reading ${fileName}:`, err);
+        process.exit(1);
+    }
+});
 
-var files = {}
-input_files.forEach(fn => {
-    files[fn] = fs.readFileSync(fn, { encoding: 'utf-8' });
-})
+// Generate output
+const output = `/* Generated file - DO NOT MODIFY */\nconst files = ${JSON.stringify(files, null, 4)};\n\nexports.files = files;\n/* Generated file - DO NOT MODIFY */\n`;
 
-output_text = `const files = ${JSON.stringify(files, null, 4)};\n\n`
-output_text += `exports.files = files;\n`
-    // var afls = {}
-
-// input_files.forEach(fn => {
-//     var gfn = fn.replace(/\./g, '_');
-//     afls[gfn] = fn;
-//     var data = fs.readFileSync(fn, { encoding: 'utf-8' });
-//     var txt = `const ${gfn} = \`${data}\`;\n\n`
-//     output_text += txt;
-// })
-
-// output_text += `var files = ${JSON.stringify(afls)};\n`
-
-
-
-fs.writeFileSync(out_filename, output_text, { encoding: 'utf-8' });
+// Write output file
+try {
+    fs.writeFileSync(outFile, output, { encoding: 'utf-8' });
+    console.log(`Successfully generated ${outFile}`);
+} catch (err) {
+    console.error('Error writing output file:', err);
+    process.exit(1);
+}

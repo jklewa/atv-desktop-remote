@@ -33,6 +33,17 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 ## Building
 
 1. `electron-builder` is used to create a standalone application.
+2. Builds are platform specific:
+   1. MacOS x86: `npm run build`
+   2. MacOS arm64: `npm run build-arm`
+   3. Windows: `npm run build:win`
+   4. Windows (in Docker): `npm run docker-build`
+3. Packages are stored in `dist/`
+
+## Version Bump
+
+1. To increment the semvar version number: `python fixversion.py 1.2.3`
+2. Update package locks in both `.` and `app/`: `npm install && cd app/ && npm install`
 
 ## Notes
 
