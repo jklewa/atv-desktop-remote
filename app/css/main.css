@@ -163,16 +163,10 @@ a:active {
     color: white;
 }
 
-header,
-footer {
-    text-align: center;
-    height: 60px;
-}
-
 footer {
     width: 100%;
     position: fixed;
-    bottom: 15px;
+    bottom: 0px;
 }
 
 header,
@@ -180,7 +174,11 @@ footer,
 article,
 nav,
 aside {
-    padding: 1em;
+    padding: 0;
+}
+
+div.footer {
+    padding-bottom: 5px;
 }
 
 .grab-bar {
@@ -200,8 +198,7 @@ aside {
 
 #statusText {
     display: none;
-    position: fixed;
-    bottom: 0;
+    margin: 0;
 }
 
 .ctText {
