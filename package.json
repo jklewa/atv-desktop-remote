@@ -10,7 +10,13 @@
         "mac": {
             "category": "public.app-category.utilities",
             "target": [
-                "dmg"
+                {
+                    "target": "dmg",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                }
             ]
         },
         "dmg": {
@@ -24,6 +30,18 @@
         "nsis": {
             "differentialPackage": false
         },
+        "linux": {
+            "target": [
+                "AppImage"
+            ]
+        },
+        "publish": [
+            {
+                "provider": "github",
+                "publishAutoUpdate": false,
+                "vPrefixedTagName": true
+            }
+        ],
         "extraFiles": [
             "server/wsserver.py"
         ]
@@ -33,13 +51,10 @@
         "start": "electron app",
         "postinstall": "electron-builder install-app-deps",
         "prebuild": "node build/create_python_embed.js",
-        "build": "npx electron-builder -m",
-        "docker-build": "./electron_docker.sh 'npm run build:win'",
-        "build:win": "npx electron-builder -w",
-        "build-arm": "npx electron-builder -m --arm64"
+        "build": "electron-builder"
     },
     "devDependencies": {
-        "electron": "^13.6.9",
+        "electron": "13.6.9",
         "electron-builder": "^24.6.4"
     }
 }
