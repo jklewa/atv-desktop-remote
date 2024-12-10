@@ -15,8 +15,8 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
 ## FAQ
 
  1. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
-   * This is an artifact of the MacOS quarantine of unsigned applications
-   * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
+    * This is an artifact of the MacOS quarantine of unsigned applications
+    * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
 
 ## Running
 
@@ -53,5 +53,7 @@ Also note if you don't see an option for entering text, you may need to pair wit
 This is cobbled together from a few projects I've worked on. It works well enough for me for daily use, so I figured others might like it. 
 
 This project is built using [pyatv.](https://pyatv.dev/)
+
+Support **bsharper**:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/brianharper)
