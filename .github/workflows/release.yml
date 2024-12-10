@@ -13,6 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+      fail-fast: false
 
     steps:
       - name: Check out Git repository
@@ -23,7 +24,19 @@ jobs:
         with:
           node-version: 22
 
+      - name: Add code signing dependencies
+        if: runner.os == 'macOS'
+        run: |
+          echo "${{ secrets.APPLE_DEV_ID_APP }}" | base64 --decode -o ${{ runner.temp }}/AppleCSC.p12
+          echo CSC_LINK=${{ runner.temp }}/AppleCSC.p12 >> $GITHUB_ENV
+          echo CSC_KEY_PASSWORD=${{ secrets.APPLE_DEV_ID_APP_PASS }} >> $GITHUB_ENV
+          echo "${{ secrets.APPLE_API_KEY }}" | base64 --decode -o ${{ runner.temp }}/AppStoreConnect.p8
+          echo APPLE_API_KEY=${{ runner.temp }}/AppStoreConnect.p8 >> $GITHUB_ENV
+          echo APPLE_API_KEY_ID=${{ secrets.APPLE_API_KEY_ID }} >> $GITHUB_ENV
+          echo APPLE_API_ISSUER=${{ secrets.APPLE_API_ISSUER }} >> $GITHUB_ENV
+
       - name: Build/release Electron app
+        timeout-minutes: 15
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
