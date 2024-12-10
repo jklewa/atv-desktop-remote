@@ -3,9 +3,9 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
  ![What this application looks like when running in either light or dark mode](screenshot.png)
 
- ## Download
+## Download
 
- I've created macOS, Windows & Linux releases available here: [/releases](https://github.com/jklewa/atv-desktop-remote/releases)
+MacOS, Windows & Linux releases are available here: [Releases](https://github.com/jklewa/atv-desktop-remote/releases)
 
 ## Usage
 
@@ -14,11 +14,11 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
 ## FAQ
 
-1. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
+ 1. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
    * This is an artifact of the MacOS quarantine of unsigned applications
    * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
 
- ## Running
+## Running
 
  1. Run `npm install` or `yarn`
  2. Run `npm start` or `yarn start`
@@ -32,6 +32,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 2. `npm run build` builds MacOS, Windows, & Linux
 3. Packages are stored in `dist/`
 4. Pushing a new release tag (`v1.x.x`) also triggers a release with GitHub Actions
+5. To update the application's screenshot: `python generate_screenshot.py`
 
 ## Version Bump
 
