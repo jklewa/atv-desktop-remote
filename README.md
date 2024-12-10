@@ -5,7 +5,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
  ## Download
 
- I've created macOS and Windows releases available here: [/releases](./releases)
+ I've created macOS and Windows releases available here: [/releases](/releases)
 
 ## Usage
 
