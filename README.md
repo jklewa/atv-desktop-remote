@@ -30,6 +30,10 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
  3. I don't see an option for entering text
     * You may need to pair with your ATV again
     * You have to enter 2 codes instead of 1 because sending text to search fields uses a different protocol
+ 4. Where is the application's data stored?
+    * Mac: `~/Library/Application\ Support/ATV\ Remote/`
+    * Windows: `%APPDATA%\ATV Remote`
+    * Linux:`~/.local/share/ATV\ Remote/`
 
 ## Running
 
@@ -37,7 +41,8 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
  2. Run `npm start` or `yarn start`
  3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
  4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
- 5. Press `Cmd+Shift+R` to open the application from anywhere. On Windows its `Win+Shift+R`
+ 5. Press `CmdOrCtrl+Shift+0` to open the application from anywhere.
+    * A `hotkey.txt` with a valid [accelerator](https://www.electronjs.org/docs/api/accelerator) in the application's data directory will override this.
 
 ## Building
 

@@ -278,31 +278,24 @@ app.whenReady().then(() => {
         showWindow();
     })
 
-    var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
+    let hotkeys = ['CommandOrControl+Shift+0']
+    let hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
     if (fs.existsSync(hotkeyPath)) {
-        var hotkeys = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
-        if (hotkeys.indexOf(",") > -1) {
-            hotkeys = hotkeys.split(',').map(el => { return el.trim() });
+        const hotkeysContent = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
+        if (hotkeysContent.indexOf(",") > -1) {
+            hotkeys = hotkeysContent.split(',').map(el => { return el.trim() });
         } else {
-            hotkeys = [hotkeys];
+            hotkeys = [hotkeysContent];
         }
-        console.log(`Registering custom hotkeys: ${hotkeys}`)
-        globalShortcut.registerAll(hotkeys, () => {
-            if (mb.window.isVisible()) {
-                hideWindow();
-            } else {
-                showWindow();
-            }
-        })
-    } else {
-        globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
-            if (mb.window.isVisible()) {
-                hideWindow();
-            } else {
-                showWindow();
-            }
-        })
     }
+    console.log(`Registering custom hotkeys: ${hotkeys}`)
+    globalShortcut.registerAll(hotkeys, () => {
+        if (mb.window.isVisible()) {
+            hideWindow();
+        } else {
+            showWindow();
+        }
+    })
     var version = app.getVersion();
     app.setAboutPanelOptions({
         applicationName: "ATV Remote",
