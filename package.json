@@ -1,66 +1,77 @@
 {
-    "name": "atv-mac-remote",
-    "version": "1.1.13",
-    "main": "app/main.js",
-    "description": "ATV Remote",
+  "name": "atv-desktop-remote",
+  "version": "1.1.13",
+  "description": "Control an Apple TV from your desktop",
+  "license": "MIT",
+  "author": "bsharper (https://github.com/bsharper/atv-desktop-remote)",
+  "maintainers": [
+    "Jason Lewallen <jklewa@gmail.com>"
+  ],
+  "homepage": "https://github.com/jklewa/atv-desktop-remote",
+  "repository": "github:jklewa/atv-desktop-remote",
+  "bugs": "https://github.com/jklewa/atv-desktop-remote/issues",
+  "main": "app/main.js",
+  "scripts": {
+    "prebuild": "node build/create_python_embed.js",
+    "build": "electron-builder -c.mac.identity=null",
+    "postinstall": "electron-builder install-app-deps",
+    "prestart": "node build/create_python_embed.js",
+    "start": "electron app"
+  },
+  "devDependencies": {
+    "@electron/notarize": "^2.5.0",
+    "electron": "13.6.9",
+    "electron-builder": "^24.6.4",
+    "prettier-package-json": "^2.8.0"
+  },
+  "build": {
     "productName": "ATV Remote",
-    "build": {
-        "productName": "ATV Remote",
-        "appId": "com.electron.atvMacRemote",
-        "mac": {
-            "category": "public.app-category.utilities",
-            "hardenedRuntime": true,
-            "gatekeeperAssess": false,
-            "entitlements": "build/entitlements.mac.plist",
-            "entitlementsInherit": "build/entitlements.mac.plist",
-            "target": [
-                {
-                    "target": "dmg",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                }
-            ]
-        },
-        "dmg": {
-            "writeUpdateInfo": false,
-            "sign": false
-        },
-        "win": {
-            "target": [
-                "nsis"
-            ]
-        },
-        "nsis": {
-            "differentialPackage": false
-        },
-        "linux": {
-            "target": [
-                "AppImage"
-            ]
-        },
-        "publish": [
-            {
-                "provider": "github",
-                "publishAutoUpdate": false,
-                "vPrefixedTagName": true
-            }
-        ],
-        "extraFiles": [
-            "server/wsserver.py"
-        ]
+    "appId": "com.electron.atvDesktopRemote",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
     },
-    "scripts": {
-        "prestart": "node build/create_python_embed.js",
-        "start": "electron app",
-        "postinstall": "electron-builder install-app-deps",
-        "prebuild": "node build/create_python_embed.js",
-        "build": "electron-builder -c.mac.identity=null"
+    "dmg": {
+      "writeUpdateInfo": false,
+      "sign": false
     },
-    "devDependencies": {
-        "@electron/notarize": "^2.5.0",
-        "electron": "13.6.9",
-        "electron-builder": "^24.6.4"
-    }
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "differentialPackage": false
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility",
+      "maintainer": "Jason Lewallen <jklewa@gmail.com>"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "publishAutoUpdate": false,
+        "vPrefixedTagName": true
+      }
+    ],
+    "extraFiles": [
+      "server/wsserver.py"
+    ]
+  },
+  "productName": "ATV Remote"
 }
