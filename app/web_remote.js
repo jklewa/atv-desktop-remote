@@ -616,8 +616,11 @@ function toggleAlwaysOnTop(event) {
     ipcRenderer.invoke('alwaysOnTop', String(event.checked));
 }
 
-async function helpMessage() {
-    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
+async function helpMessage()
+{
+    // It's not ideal to hardcode the shortcut. It would be better to get it from the main process.
+    const shortcut = process.platform === 'darwin' ? 'Command+Shift+0' : 'Ctrl+Shift+0';
+    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: `Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press ${shortcut} (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.` })
 }
 
 async function init() {
