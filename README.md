@@ -1,4 +1,11 @@
 # ATV Desktop Remote
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/jklewa/atv-desktop-remote/total?logo=github)](https://github.com/jklewa/atv-desktop-remote/releases)
+[![GitHub last commit (branch)](https://img.shields.io/github/last-commit/jklewa/atv-desktop-remote/main)](https://github.com/jklewa/atv-desktop-remote/commits/main/)
+![GitHub repo size](https://img.shields.io/github/repo-size/jklewa/atv-desktop-remote)
+[![GitHub Release](https://img.shields.io/github/v/release/jklewa/atv-desktop-remote?include_prereleases)](https://github.com/jklewa/atv-desktop-remote/releases/latest)
+
+*Feedback or issue? [File an issue](https://github.com/jklewa/atv-desktop-remote/issues)*
+
 A simple menubar app that allows you to control an Apple TV from your desktop
 
  ![What this application looks like when running in either light or dark mode](screenshot.png)
@@ -17,6 +24,12 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
  1. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
     * This is an artifact of the MacOS quarantine of unsigned applications
     * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
+ 2. Apple TV will not pair
+    * Make sure the Apple TV is on the same network as the computer running the application
+    * Make sure `Settings -> AirPlay and HomeKit -> Allow Access` is set to either `Everyone or Anyone on the Same Network` and not `Only People Sharing This Home`
+ 3. I don't see an option for entering text
+    * You may need to pair with your ATV again
+    * You have to enter 2 codes instead of 1 because sending text to search fields uses a different protocol
 
 ## Running
 
@@ -39,21 +52,12 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
 1. To increment the semvar version number: `python fixversion.py 1.2.3`
 2. Update package locks in both `.` and `app/`: `npm install && cd app/ && npm install`
 
-## Update: Keyboard input works
-
-The latest version works with tvOS 15 and up. It requires Python 3 to be installed on the system to work properly.
-
-When the program starts, it will attempt to install the necessary modules for Python to work properly. If you have custom scripts under the working directory, please check the release notes for v1.1.1 to see what steps you need to take for this to work for you.
-On first run this program will run `pip` to install modules under a self-contained `env` directory. This program still works as it used to once it is running, but it does use a more complex method for communicating with the Apple TV.
-
-Also note if you don't see an option for entering text, you may need to pair with your ATV again. You have to enter 2 codes instead of 1 because sending text to search fields uses a different protocol.
-
 ## Notes
 
-This is cobbled together from a few projects I've worked on. It works well enough for me for daily use, so I figured others might like it. 
+This is a fork of the original project: [bsharper/atv-desktop-remote](https://github.com/bsharper/atv-desktop-remote)
 
 This project is built using [pyatv.](https://pyatv.dev/)
 
-Support **bsharper**:
+Support the original author **bsharper**:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/brianharper)
