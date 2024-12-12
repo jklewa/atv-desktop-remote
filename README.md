@@ -14,6 +14,8 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
 macOS, Windows & Linux releases are available here: [Releases](https://github.com/jklewa/atv-desktop-remote/releases)
 
+Python 3.9+ is required, and can be downloaded from [python.org](https://www.python.org/downloads/)
+
 ## Usage
 
  1. All of the keys are mapped to the keyboard when the application is open (pressing return or enter on the keyboard for select, delete for Menu, etc).
@@ -21,19 +23,19 @@ macOS, Windows & Linux releases are available here: [Releases](https://github.co
 
 ## FAQ
 
- 1. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
-    * This is an artifact of the macOS quarantine of unsigned applications
-    * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
- 2. Apple TV will not pair
-    * Make sure the Apple TV is on the same network as the computer running the application
-    * Make sure `Settings -> AirPlay and HomeKit -> Allow Access` is set to either `Everyone or Anyone on the Same Network` and not `Only People Sharing This Home`
- 3. I don't see an option for entering text
-    * You may need to pair with your ATV again
-    * You have to enter 2 codes instead of 1 because sending text to search fields uses a different protocol
- 4. Where is the application's data stored?
-    * Mac: `~/Library/Application\ Support/ATV\ Remote/`
-    * Windows: `%APPDATA%\ATV Remote`
-    * Linux:`~/.local/share/ATV\ Remote/`
+1. Apple TV will not pair
+   * Make sure the Apple TV is on the same network as the computer running the application
+   * Make sure `Settings -> AirPlay and HomeKit -> Allow Access` is set to either `Everyone or Anyone on the Same Network` and not `Only People Sharing This Home`
+2. I don't see an option for entering text
+   * You may need to pair with your ATV again
+   * You have to enter 2 codes instead of 1 because sending text to search fields uses a different protocol
+3. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
+   * This is an artifact of the macOS quarantine of unsigned applications
+   * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
+4. Where is the application's data stored?
+   * Mac: `~/Library/Application\ Support/ATV\ Remote/`
+   * Windows: `%APPDATA%\ATV Remote`
+   * Linux:`~/.local/share/ATV\ Remote/`
 
 ## Running
 
