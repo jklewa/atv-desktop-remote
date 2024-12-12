@@ -12,7 +12,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
 ## Download
 
-MacOS, Windows & Linux releases are available here: [Releases](https://github.com/jklewa/atv-desktop-remote/releases)
+macOS, Windows & Linux releases are available here: [Releases](https://github.com/jklewa/atv-desktop-remote/releases)
 
 ## Usage
 
@@ -22,7 +22,7 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
 ## FAQ
 
  1. The application cannot be opened (`“ATV Remote.app” is damaged and can’t be opened`)
-    * This is an artifact of the MacOS quarantine of unsigned applications
+    * This is an artifact of the macOS quarantine of unsigned applications
     * You can bypass it by running `xattr -c  /Applications/ATV\ Remote.app`
  2. Apple TV will not pair
     * Make sure the Apple TV is on the same network as the computer running the application
@@ -46,16 +46,14 @@ MacOS, Windows & Linux releases are available here: [Releases](https://github.co
 
 ## Building
 
-1. `electron-builder` is used to create a standalone application.
-2. `npm run build` builds MacOS, Windows, & Linux
+1. [electron-builder](https://www.electron.build/) is used to create a standalone application
+2. `npm run build` builds your local environment
+   * `npm run build -- --mac --win --linux` builds macOS, Windows, & Linux
 3. Packages are stored in `dist/`
-4. Pushing a new release tag (`v1.x.x`) also triggers a release with GitHub Actions
+4. Pushing a new release tag (`v1.x.x`) also triggers a build & release with GitHub Actions
 5. To update the application's screenshot: `python generate_screenshot.py`
-
-## Version Bump
-
-1. To increment the semvar version number: `python fixversion.py 1.2.3`
-2. Update package locks in both `.` and `app/`: `npm install && cd app/ && npm install`
+6. To increment the semvar version number: `python fixversion.py 1.2.3`
+   * This will prompt you to update package locks in both `.` and `app/`
 
 ## Notes
 

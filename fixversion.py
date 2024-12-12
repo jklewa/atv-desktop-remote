@@ -5,9 +5,9 @@ import sys
 import subprocess
 import platform
 
-def run_npm_install(directory='.'):
+def run_npm_install(directory='.', default='y'):
     abspath = os.path.abspath(directory)
-    response = input(f"Do you want to run 'npm install' in {abspath}? (y/n): ")
+    response = input(f"Do you want to run 'npm install' in {abspath}? (Y/n): ").strip() or default
     if response.lower() == 'y':
         # Use powershell on Windows, otherwise use bash
         shell = True if platform.system() == 'Windows' else False
@@ -30,11 +30,11 @@ build_pkg['version'] = newver
 app_pkg['version'] = newver
 
 with open('app/package.json', 'w') as f:
-	json.dump(app_pkg, f, indent=4)
-	f.write('\n')
+    json.dump(app_pkg, f, indent=2)
+    f.write('\n')
 with open('package.json', 'w') as f:
-	json.dump(build_pkg, f, indent=4)
-	f.write('\n')
+    json.dump(build_pkg, f, indent=2)
+    f.write('\n')
 
 # Prompt for npm install in both directories
 run_npm_install()  # Root directory
