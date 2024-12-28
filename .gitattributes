@@ -1,0 +1,4 @@
+app/css/** linguist-vendored
+app/css/main.css -linguist-vendored
+app/js/** linguist-vendored
+app/webfonts/** linguist-vendored
