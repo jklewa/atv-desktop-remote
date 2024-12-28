@@ -1,3 +1,4 @@
+const {serverLog} = require('./log')
 const spawn = require('child_process').spawn
 const exec = require('child_process').exec
 const WebSocket = require('ws').WebSocket
@@ -193,16 +194,19 @@ async function startServer() {
         console.log(sh_path)
         proc = spawn(sh_path, { detached: false })
     }
+    serverLog.info(`Server started with PID ${proc.pid}`);
 
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });
     errorBuffer = [];
 
     stdout.on("line", line => {
+        serverLog.debug(line);
         parseLine("stdout", line);
     })
 
     stderr.on("line", line => {
+        serverLog.error(line);
         parseLine("stderr", line)
     })
 
@@ -212,17 +216,18 @@ async function startServer() {
 
         // Don't attempt restart if shutting down or killed intentionally
         if (isShuttingDown || signal === 'SIGTERM' || signal === 'SIGKILL') {
+            serverLog.info('Server stopped');
             server_events.emit("stopped", code, signal, errorBuffer);
             return;
         }
 
         // Handle unexpected exits
         if (restartCount < MAX_RESTARTS) {
-            console.log(`Server exited unexpectedly. Attempting restart ${restartCount + 1}/${MAX_RESTARTS}...`);
+            serverLog.warn(`Server exited unexpectedly. Attempting restart ${restartCount + 1}/${MAX_RESTARTS}...`);
             restartCount++;
             setTimeout(() => startServer(), RESTART_TIMEOUT);
         } else {
-            console.log('Max restart attempts reached');
+            serverLog.error('Max restart attempts reached');
             server_events.emit("stopped", code, signal, errorBuffer, true); // true indicates max restarts reached
         }
     }

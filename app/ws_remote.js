@@ -1,3 +1,6 @@
+const {log} = require('./log');
+// Override console.log/info/warn/error
+Object.assign(console, log.functions);
 const WebSocket = require('ws').WebSocket
 const EventEmitter = require('events');
 
@@ -41,7 +44,11 @@ function sendMessage(command, data) {
         var cmd_ar = pending.shift();
         ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
     }
-    console.log(`sendMessage: {cmd:${command}, data:${JSON.stringify(data)}}`)
+    if (command === "kbfocus") {
+        console.debug(`sendMessage: {cmd:${command}, data:${JSON.stringify(data)}}`)
+    } else {
+        console.log(`sendMessage: {cmd:${command}, data:${JSON.stringify(data)}}`)
+    }
     ws.send(JSON.stringify({ cmd: command, data: data }))
 }
 
@@ -96,7 +103,11 @@ function startWebsocket() {
     });
 
     ws.on('message', function message(data) {
-        console.log('received: %s', data.toString());
+        if (data.includes("kbfocus")) {
+            console.debug('received: %s', data.toString());
+        } else {
+            console.log('received: %s', data.toString());
+        }
         var j = JSON.parse(data);
         if (j.command == "scanResult") {
             console.log(`Results: ${j.data}`)

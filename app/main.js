@@ -1,3 +1,6 @@
+const {log} = require('./log');
+// Override console.log/info/warn/error
+Object.assign(console, log.functions);
 const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut, webContents, dialog } = require('electron')
 var win;
 const { ipcMain } = require('electron')
@@ -42,14 +45,14 @@ var handleVolumeButtonsGlobal = false;
 var mb;
 var kbHasFocus;
 
-console._log = console.log;
-console.log = function() {
-    let txt = util.format(...[].slice.call(arguments)) + '\n'
-    process.stdout.write(txt);
-    if (win && win.webContents) {
-        win.webContents.send('mainLog', txt);
-    }
-}
+// console._log = console.log;
+// console.log = function() {
+//     let txt = util.format(...[].slice.call(arguments)) + '\n'
+//     process.stdout.write(txt);
+//     if (win && win.webContents) {
+//         win.webContents.send('mainLog', txt);
+//     }
+// }
 
 const gotTheLock = app.requestSingleInstanceLock()
 

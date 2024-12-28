@@ -100,9 +100,9 @@ ipcRenderer.on('gotStartPair', () => {
     console.log('gotStartPair');
 })
 
-ipcRenderer.on('mainLog', (event, txt) => {
-    console.log('[ main ] %s', txt.substring(0, txt.length - 1));
-})
+// ipcRenderer.on('mainLog', (event, txt) => {
+//     console.log('[ main ] %s', txt.substring(0, txt.length - 1));
+// })
 
 ipcRenderer.on('powerResume', (event, arg) => {
     connectToATV();

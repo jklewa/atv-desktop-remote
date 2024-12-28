@@ -4,15 +4,18 @@ from typing import Any
 import sys
 import json
 import pyatv
-import random
 import asyncio
 from pyatv.const import InputAction
 import websockets
 
 import logging
-logger = logging.getLogger('websockets')
+ws_logger = logging.getLogger('websockets')
+ws_logger.setLevel(logging.DEBUG)
+ws_logger.addHandler(logging.StreamHandler(sys.stdout))
+
+logger = logging.getLogger('server')
 logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+logger.addHandler(logging.StreamHandler(sys.stderr))
 
 
 interface = pyatv.interface
@@ -35,12 +38,12 @@ pairing_creds = {}
 class ATVKeyboardListener(interface.KeyboardListener):
     global active_ws
     def focusstate_update(self, old_state, new_state):
-        print('Focus state changed from {0:s} to {1:s}'.format(old_state, new_state), flush=True)
+        logger.log('Focus state changed from {0:s} to {1:s}'.format(old_state, new_state))
         if active_ws:
             try:
                 loop.run_until_complete(sendCommand(active_ws, "keyboard_changestate", [old_state, new_state]))
             except Exception as ex:
-                print (f"change state error: {ex}", flush=True)
+                logger.error(f"change state error: {ex}")
                 
 
 
@@ -55,14 +58,14 @@ async def parseRequest(j, websocket):
         cmd = j["cmd"]
     else:
         return
-    #print (f"got command: {cmd}", flush=True)
+    #logger.info(f"got command: {cmd}")
     
     data = False
     if "data" in j.keys():
         data = j["data"]
     
     if cmd == "quit":
-        print ("quit command")
+        logger.info("quit command")
         await asyncio.sleep(0.5)
         sys.exit(0)
     
@@ -81,24 +84,24 @@ async def parseRequest(j, websocket):
         await sendCommand(websocket, "echo_reply", data)
 
     if cmd == "startPair":
-        print ("startPair")
+        logger.info("startPair")
         atv = scan_lookup[data]
         pairing_atv = atv
-        print ("pairing atv %s" % (atv))
+        logger.info("pairing atv %s" % (atv))
         pairing = await pair(atv, Protocol.AirPlay, loop)
         active_pairing = pairing
         await pairing.begin()
 
     if cmd == "finishPair1":
-        print("finishPair %s" % (data))
+        logger.info("finishPair %s" % (data))
         pairing = active_pairing
         pairing.pin(data)
         await pairing.finish()
         if pairing.has_paired:
-            print("Paired with device!")
-            print("Credentials:", pairing.service.credentials)
+            logger.info("Paired with device!")
+            logger.info("Credentials:", pairing.service.credentials)
         else:
-            print("Did not pair with device!")
+            logger.info("Did not pair with device!")
             return
         creds = pairing.service.credentials
         id = pairing_atv.identifier
@@ -107,35 +110,35 @@ async def parseRequest(j, websocket):
         await sendCommand(websocket, "startPair2")
         #await sendCommand(websocket, "pairCredentials1", nj)
         atv = pairing_atv
-        print ("pairing atv %s" % (atv))
+        logger.info("pairing atv %s" % (atv))
         pairing = await pair(atv, Protocol.Companion, loop)
         active_pairing = pairing
         await pairing.begin()
 
     if cmd == "finishPair2":
-        print("finishPair %s" % (data))
+        logger.info("finishPair %s" % (data))
         pairing = active_pairing
         pairing.pin(data)
         await pairing.finish()
         if pairing.has_paired:
-            print("Paired with device!")
-            print("Credentials:", pairing.service.credentials)
+            logger.info("Paired with device!")
+            logger.info("Credentials:", pairing.service.credentials)
         else:
-            print("Did not pair with device!")
+            logger.info("Did not pair with device!")
         pairing_creds["Companion"] = pairing.service.credentials
         await sendCommand(websocket, "pairCredentials", pairing_creds)
     
     
     if cmd == "finishPair":
-        print("finishPair %s" % (data))
+        logger.info("finishPair %s" % (data))
         pairing = active_pairing
         pairing.pin(data)
         await pairing.finish()
         if pairing.has_paired:
-            print("Paired with device!")
-            print("Credentials:", pairing.service.credentials)
+            logger.info("Paired with device!")
+            logger.info("Credentials:", pairing.service.credentials)
         else:
-            print("Did not pair with device!")
+            logger.info("Did not pair with device!")
         creds = pairing.service.credentials
         id = pairing_atv.identifier
         nj = {"credentials": creds, "identifier": id}
@@ -154,13 +157,13 @@ async def parseRequest(j, websocket):
         await active_device.keyboard.text_set(text)
     
     if cmd == "gettext":
-        print (f"gettext focus compare {active_device and active_device.keyboard.text_focus_state} == {pyatv.const.KeyboardFocusState.Focused}", flush=True)
+        logger.info(f"gettext focus compare {active_device and active_device.keyboard.text_focus_state} == {pyatv.const.KeyboardFocusState.Focused}")
 
 
         if not active_device or active_device.keyboard.text_focus_state != pyatv.const.KeyboardFocusState.Focused:
             return
         ctext = await active_device.keyboard.text_get()
-        print (f"Current text: {ctext}", flush=True)
+        logger.info(f"Current text: {ctext}")
         await sendCommand(websocket, "current-text", ctext)
     
     if cmd == "connect":
@@ -171,15 +174,15 @@ async def parseRequest(j, websocket):
             companion_creds = data["Companion"]
             stored_credentials[Protocol.Companion] = companion_creds
         
-        print ("stored_credentials %s" % (stored_credentials))
+        logger.info("stored_credentials %s" % (stored_credentials))
         atvs = await pyatv.scan(loop, identifier=id)
         if not atvs:
-            print ("No device found with identifier %s" % (id))
+            logger.info("No device found with identifier %s" % (id))
             await sendCommand(websocket, "connected", {"connected": False, "error": "No device found with identifier %s" % (id)})
             return
         atv = atvs[0]
         for protocol, credentials in stored_credentials.items():
-            print ("Setting protocol %s with credentials %s" % (str(protocol), credentials))
+            logger.info("Setting protocol %s with credentials %s" % (str(protocol), credentials))
             atv.set_credentials(protocol, credentials)
         try:
             device = await pyatv.connect(atv, loop)
@@ -192,7 +195,7 @@ async def parseRequest(j, websocket):
             power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
             await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
         except Exception as ex:
-            print (f"Failed to connect, error: {ex}", flush=True)
+            logger.error(f"Failed to connect, error: {ex}")
             await sendCommand(websocket, "connected", {"connected": False, "error": str(ex)})
     
     if cmd == "key":
@@ -210,7 +213,7 @@ async def parseRequest(j, websocket):
                 r = await getattr(active_remote, key)()
             else:
                 r = await getattr(active_remote, key)(taction)
-            #print (r)
+            #logger.info(r)
 
     if cmd == "power_status":
         if active_device:
@@ -218,7 +221,7 @@ async def parseRequest(j, websocket):
                 power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
                 await sendCommand(websocket, "power_status", power_status)
             except Exception as ex:
-                print(f"Error getting power status: {ex}", flush=True)
+                logger.error(f"Error getting power status: {ex}")
                 await sendCommand(websocket, "power_error", str(ex))
 
     if cmd == "power_toggle":
@@ -231,7 +234,7 @@ async def parseRequest(j, websocket):
                     await active_device.power.turn_on()
                 await sendCommand(websocket, "power_status", target_power_state)
             except Exception as ex:
-                print(f"Error toggling power: {ex}", flush=True)
+                logger.error(f"Error toggling power: {ex}")
                 await sendCommand(websocket, "power_error", str(ex))
 
 async def close_active_device():
@@ -239,11 +242,11 @@ async def close_active_device():
         if active_device:
             await active_device.close()
     except Exception as ex:
-        print ("Error closing active_device: %s" %(ex))
+        logger.error("Error closing active_device: %s" %(ex))
 
 async def reset_globals():
     global scan_lookup, pairing_atv, active_pairing, active_device, active_remote, active_ws
-    print ("Resetting global variables")
+    logger.info("Resetting global variables")
     scan_lookup = {}
     
     pairing_atv = False
@@ -264,9 +267,9 @@ async def check_exit_file():
         await asyncio.sleep(0.5)
         fe = os.path.exists('stopserver')
         txt = "found" if fe else "not found"
-        #print ("stopserver %s" % (txt), flush=True)
+        #logger.info("stopserver %s" % (txt))
         if fe:
-            print ("exiting")
+            logger.info("exiting")
             keep_running = False
             os.unlink('stopserver')
             sys.exit(0)
@@ -279,7 +282,7 @@ async def ws_main(websocket):
         try:
             j = json.loads(message)
         except Exception as ex:
-            print ("Error parsing message: %s\n%s" % (str(ex), message))
+            logger.error("Error parsing message: %s\n%s" % (str(ex), message))
             continue
         
         await parseRequest(j, websocket)
@@ -288,9 +291,9 @@ async def main(port):
     global keep_running
     width = 80
     txt = "%s WebSocket - ATV Server" % (my_name)
-    print ("="*width)
-    print (txt.center(width))
-    print ("="*width, flush=True)
+    logger.info("="*width)
+    logger.info(txt.center(width))
+    logger.info("="*width)
     task = asyncio.create_task(check_exit_file())
 
     async with websockets.serve(ws_main, "localhost", port):
@@ -299,7 +302,7 @@ async def main(port):
             #     await asyncio.sleep(1)
             await asyncio.Future()  # run forever
         except Exception as ex:
-            print (ex)
+            logger.error(ex)
             sys.exit(0)
 
 
@@ -309,7 +312,7 @@ if __name__ == "__main__":
     port = default_port
     if len(args) > 0:
         if args[0] in ["-h", "--help", "-?", "/?"]:
-            print ("Usage: %s (port_number)\n\n Port number by default is %d" % (my_name, default_port))
+            logger.info("Usage: %s (port_number)\n\n Port number by default is %d" % (my_name, default_port))
         port = int(args[0])
 
     asyncio.set_event_loop(loop)
