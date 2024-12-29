@@ -109,20 +109,9 @@ function startWebsocket() {
             connectToATV();
         }
         if (j.command == "connected") {
-            atv_connected = true;
-            connection_failure = false;
+            atv_connected = !!j.data?.connected;
+            connection_failure = j.data?.error != null;
             atv_events.emit("connected", atv_connected);
-        }
-        if (j.command == "is_connected") {
-            console.log('got_is_connected');
-            atv_connected = !!(j.data)
-            atv_events.emit("connected", atv_connected);
-        }
-        if (j.command == "connection_failure") {
-            console.log(`connection_failure: ${j.data}`)
-            atv_connected = false;
-            connection_failure = true;
-            atv_events.emit("connection_failure", j.data)
         }
         if (j.command == "startPair2") {
             $("#pairStepNum").html("2");
@@ -145,16 +134,6 @@ function startWebsocket() {
             ipcRenderer.invoke("power_error", j.data);
         }
     });
-}
-
-function ws_is_connected() {
-    return new Promise((resolve, reject) => {
-        atv_events.once("connected", ic => {
-            if (ic) connection_failure = false;
-            resolve(ic);
-        })
-        sendMessage("is_connected");
-    })
 }
 
 function ws_startScan() {
@@ -180,19 +159,13 @@ function ws_connect(creds) {
     if (ws_connecting) return;
     ws_start_tm = Date.now();
     ws_connecting = true;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         console.log(`ws_connect: ${creds}`)
         sendMessage("connect", creds)
-        atv_events.once("connected", ic => {
+        atv_events.once("connected", () => {
             ws_connecting = false;
             ws_start_tm = false;
-            if (ic) {
-                resolve();
-                connection_failure = false;
-            } else {
-                connection_failure = true;
-                startScan();
-            }
+            resolve();
         });
     })
 }

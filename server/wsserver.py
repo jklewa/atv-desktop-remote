@@ -1,4 +1,6 @@
 import os
+from typing import Any
+
 import sys
 import json
 import pyatv
@@ -42,8 +44,8 @@ class ATVKeyboardListener(interface.KeyboardListener):
                 
 
 
-async def sendCommand (ws, command, data=[]):
-    r = {"command": command, "data": data}
+async def sendCommand (ws, command, data: Any = None):
+    r = {"command": command, "data": data or []}
     await ws.send(json.dumps(r))
 
 async def parseRequest(j, websocket):
@@ -63,7 +65,6 @@ async def parseRequest(j, websocket):
         print ("quit command")
         await asyncio.sleep(0.5)
         sys.exit(0)
-        return
     
     if cmd == "scan":
         atvs = await pyatv.scan(loop)
@@ -141,7 +142,9 @@ async def parseRequest(j, websocket):
         await sendCommand(websocket, "pairCredentials", nj)
 
     if cmd == "kbfocus":
-        kbfocus = active_device and active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Focused
+        if not active_device:
+            return
+        kbfocus = active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Focused
         await sendCommand(websocket, "kbfocus-status", kbfocus)
     
     if cmd == "settext":
@@ -170,6 +173,10 @@ async def parseRequest(j, websocket):
         
         print ("stored_credentials %s" % (stored_credentials))
         atvs = await pyatv.scan(loop, identifier=id)
+        if not atvs:
+            print ("No device found with identifier %s" % (id))
+            await sendCommand(websocket, "connected", {"connected": False, "error": "No device found with identifier %s" % (id)})
+            return
         atv = atvs[0]
         for protocol, credentials in stored_credentials.items():
             print ("Setting protocol %s with credentials %s" % (str(protocol), credentials))
@@ -181,19 +188,12 @@ async def parseRequest(j, websocket):
             active_remote = remote
             kblistener = ATVKeyboardListener()
             device.keyboard.listener = kblistener
-            await sendCommand(websocket, "connected")
+            await sendCommand(websocket, "connected", {"connected": True})
             power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
             await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
         except Exception as ex:
-            print ("Failed to connect")
-            await sendCommand(websocket, "connection_failure")
-    
-    if cmd == "is_connected":
-        ic = "true" if active_remote else "false"
-        await sendCommand(websocket, "is_connected", ic)
-        if active_remote:
-            power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
-            await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
+            print (f"Failed to connect, error: {ex}", flush=True)
+            await sendCommand(websocket, "connected", {"connected": False, "error": str(ex)})
     
     if cmd == "key":
         valid_keys = ['play_pause', 'left', 'right', 'down', 'up', 'select', 'menu', 'top_menu', 'home', 'home_hold', 'skip_backward', 'skip_forward', 'volume_up', 'volume_down']

@@ -264,7 +264,11 @@ function createDropdown(ks) {
 }
 
 function createATVDropdown() {
-    $("#statusText").hide();
+    if (connection_failure) {
+        setStatus("No Connection");
+    } else {
+        $("#statusText").hide();
+    }
     var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
     var ks = Object.keys(creds);
     var atvc = localStorage.getItem('atvcreds')
