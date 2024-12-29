@@ -235,6 +235,7 @@ function createDropdown(ks) {
     $("#loader").hide();
     var txt = "";
     $("#statusText").hide();
+    $("#cmdWrapper").hide();
     $("#pairingLoader").html("")
     $("#pairStepNum").html("1");
     $("#pairProtocolName").html("AirPort");
@@ -321,7 +322,7 @@ function createATVDropdown() {
 function showAndFade(text) {
     $("#cmdFade").html(text)
     $("#cmdFade").stop(true).fadeOut(0).css({ "visibility": "visible" }).fadeIn(200).delay(800).fadeOut(function() {
-        $(this).css({ "display": "flex", "visibility": "hidden" });
+        $(this).css({ "display": "flex", "visibility": "hidden" }).html('');
     });
 }
 
@@ -397,6 +398,7 @@ async function askQuestion(msg) {
 function startPairing(dev) {
     $("#initText").hide();
     $("#results").hide();
+    $("#cmdWrapper").hide();
     $("#pairButton").on('click', () => {
         submitCode();
         return false;
@@ -417,6 +419,7 @@ function submitCode() {
 
 function showKeyMap() {
     $("#initText").hide();
+    $("#cmdWrapper").show();
     $(".directionTable").fadeIn();
     var tvTimer;
     $("[data-key]").off('mousedown mouseup mouseleave');
