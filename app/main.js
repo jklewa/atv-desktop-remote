@@ -1,12 +1,12 @@
 const {log} = require('./log');
 // Override console.log/info/warn/error
 Object.assign(console, log.functions);
-const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut, webContents, dialog } = require('electron')
+const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut, dialog } = require('electron')
+require('@electron/remote/main').initialize()
 var win;
 const { ipcMain } = require('electron')
 const path = require('path');
-//const remote = require('./remote')
-const menubar = require('menubar').menubar;
+const {menubar} = require('menubar');
 const util = require('util');
 var secondWindow;
 process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
@@ -45,15 +45,6 @@ var handleVolumeButtonsGlobal = false;
 var mb;
 var kbHasFocus;
 
-// console._log = console.log;
-// console.log = function() {
-//     let txt = util.format(...[].slice.call(arguments)) + '\n'
-//     process.stdout.write(txt);
-//     if (win && win.webContents) {
-//         win.webContents.send('mainLog', txt);
-//     }
-// }
-
 const gotTheLock = app.requestSingleInstanceLock()
 
 if (!gotTheLock) {
@@ -69,8 +60,7 @@ function createInputWindow() {
     secondWindow = new BrowserWindow({
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModule: true
+            contextIsolation: false
         },
         hide: true,
         width: 600,
@@ -78,6 +68,7 @@ function createInputWindow() {
         minimizable: false,
         maximizable: false
     });
+    require('@electron/remote/main').enable(secondWindow.webContents)
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
@@ -94,6 +85,7 @@ function createInputWindow() {
 
 function createWindow() {
     mb = menubar({
+        index: `file://${__dirname}/index.html`,
         preloadWindow: preloadWindow,
         showDockIcon: true,
         browserWindow: {
@@ -102,17 +94,17 @@ function createWindow() {
             alwaysOnTop: false,
             webPreferences: {
                 nodeIntegration: true,
-                enableRemoteModule: true,
                 contextIsolation: false
             }
         },
         windowPosition: "center"
-    })
+    });
     global['MB'] = mb;
+    mb.on("before-load", () => {
+        require('@electron/remote/main').enable(mb.window.webContents)
+    })
     mb.on(readyEvent, () => {
         win = mb.window;
-
-        var webContents = win.webContents;
         createInputWindow()
 
         win.on('close', () => {

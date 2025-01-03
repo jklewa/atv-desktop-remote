@@ -2,14 +2,10 @@ var atv_credentials = false;
 var lodash = _ = require('./js/lodash.min');
 var pairDevice = "";
 var electron = require('electron')
-var remote = electron.remote;
-var dialog = remote.dialog;
+var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote')
 var ipcRenderer = electron.ipcRenderer;
-var mb = remote.getGlobal('MB');
-const { Menu, MenuItem } = remote
+var mb = getGlobal('MB');
 const path = require('path');
-var nativeTheme = electron.remote.nativeTheme;
-var dialog = electron.remote.dialog;
 var device = false;
 var qPresses = 0;
 var playstate = false;
@@ -589,7 +585,7 @@ function subMenuClick(event) {
 }
 
 async function confirmExit() {
-    electron.remote.app.quit();
+    app.quit();
 }
 
 function handleContextMenu() {

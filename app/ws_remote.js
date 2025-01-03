@@ -1,4 +1,5 @@
 const {log} = require('./log');
+require('@electron/remote');
 // Override console.log/info/warn/error
 Object.assign(console, log.functions);
 const WebSocket = require('ws').WebSocket

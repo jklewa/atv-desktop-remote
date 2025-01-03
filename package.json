@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
-    "electron": "13.6.9",
+    "electron": "^33.0.0",
     "electron-builder": "^24.6.4",
     "prettier-package-json": "^2.8.0"
   },

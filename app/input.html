@@ -23,8 +23,7 @@
 
     <script>
         document.hidden = true;
-        const electron = require('electron')
-        const nativeTheme = electron.remote.nativeTheme;
+        const { nativeTheme } = require('@electron/remote');
         const { ipcRenderer } = require('electron');
         var textInput = document.getElementById('textInput');
         var kbHasFocus = false;

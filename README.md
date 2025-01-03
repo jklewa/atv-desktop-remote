@@ -16,6 +16,8 @@ macOS, Windows & Linux releases are available here: [Releases](https://github.co
 
 Python 3.9+ is required, and can be downloaded from [python.org](https://www.python.org/downloads/)
 
+Minimum Requirements: macOS 11 (Big Sur), Windows 10, Ubuntu 18.04, Fedora 32, Debian 10
+
 ## Usage
 
  1. All of the keys are mapped to the keyboard when the application is open (pressing return or enter on the keyboard for select, delete for Menu, etc).
