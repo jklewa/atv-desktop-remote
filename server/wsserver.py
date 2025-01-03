@@ -1,12 +1,13 @@
 import os
-from typing import Any
+from typing import Any, Union, Type
 
 import sys
 import json
 import pyatv
+import pyatv.const
 import asyncio
-from pyatv.const import InputAction
 import websockets
+import websockets.asyncio.server
 
 import logging
 ws_logger = logging.getLogger('websockets')
@@ -21,6 +22,7 @@ logger.addHandler(logging.StreamHandler(sys.stderr))
 interface = pyatv.interface
 pair = pyatv.pair
 Protocol = pyatv.const.Protocol
+pyatv_short_version = (int(pyatv.const.MAJOR_VERSION), int(pyatv.const.MINOR_VERSION))
 
 
 my_name = os.path.basename(sys.argv[0])
@@ -29,16 +31,16 @@ loop = asyncio.get_event_loop()
 scan_lookup = {}
 pairing_atv = False
 active_pairing = False
-active_device = False
-active_remote = False
-active_ws = False
+active_device: Union[pyatv.interface.AppleTV, bool] = False
+active_remote: Union[pyatv.interface.RemoteControl, bool] = False
+active_ws: Union[websockets.asyncio.server.ServerConnection, bool] = False
 default_port = 8765
 pairing_creds = {}
 
 class ATVKeyboardListener(interface.KeyboardListener):
     global active_ws
     def focusstate_update(self, old_state, new_state):
-        logger.log('Focus state changed from {0:s} to {1:s}'.format(old_state, new_state))
+        logger.info('Focus state changed from {0:s} to {1:s}'.format(old_state, new_state))
         if active_ws:
             try:
                 loop.run_until_complete(sendCommand(active_ws, "keyboard_changestate", [old_state, new_state]))
@@ -51,7 +53,7 @@ async def sendCommand (ws, command, data: Any = None):
     r = {"command": command, "data": data or []}
     await ws.send(json.dumps(r))
 
-async def parseRequest(j, websocket):
+async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConnection):
     global scan_lookup, pairing_atv, active_pairing, active_device, active_remote, active_ws, pairing_creds
     active_ws = websocket
     if "cmd" in j.keys():
@@ -60,7 +62,7 @@ async def parseRequest(j, websocket):
         return
     #logger.info(f"got command: {cmd}")
     
-    data = False
+    data: Any = False
     if "data" in j.keys():
         data = j["data"]
     
@@ -199,26 +201,33 @@ async def parseRequest(j, websocket):
             await sendCommand(websocket, "connected", {"connected": False, "error": str(ex)})
     
     if cmd == "key":
+        if not active_remote:
+            return
         valid_keys = ['play_pause', 'left', 'right', 'down', 'up', 'select', 'menu', 'top_menu', 'home', 'home_hold', 'skip_backward', 'skip_forward', 'volume_up', 'volume_down']
-        no_action_keys = ['volume_up', 'volume_down', 'play_pause', 'home_hold']
-        #taction = InputAction["SingleTap"]
-        taction = False
+        no_action_keys = ['play_pause', 'home_hold']
+        audio_keys = ['volume_up', 'volume_down']
+        # pyatv 0.9.0 and later uses interface.Audio, scheduled for removal from interface.AppleTV in 1.0.0
+        if pyatv_short_version < (0, 9):
+            no_action_keys += audio_keys
+            audio_keys = []
+        taction: Union[Type[pyatv.const.InputAction], bool] = False
         key = data
         if not isinstance(data, str):
             key = data['key']
-            taction = InputAction[data['taction']]
-    
+            taction = pyatv.const.InputAction[data['taction']]
         if key in valid_keys:
-            if key in no_action_keys or (not taction):
-                r = await getattr(active_remote, key)()
+            if key in audio_keys:
+                if active_device:
+                    await getattr(active_device.audio, key)()
+            elif key in no_action_keys or (not taction):
+                await getattr(active_remote, key)()
             else:
-                r = await getattr(active_remote, key)(taction)
-            #logger.info(r)
+                await getattr(active_remote, key)(taction)
 
     if cmd == "power_status":
         if active_device:
             try:
-                power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
+                power_status = "on" if active_device.power.power_state == pyatv.const.PowerState.On else "off"
                 await sendCommand(websocket, "power_status", power_status)
             except Exception as ex:
                 logger.error(f"Error getting power status: {ex}")
@@ -240,7 +249,7 @@ async def parseRequest(j, websocket):
 async def close_active_device():
     try:
         if active_device:
-            await active_device.close()
+            active_device.close()
     except Exception as ex:
         logger.error("Error closing active_device: %s" %(ex))
 
@@ -275,7 +284,7 @@ async def check_exit_file():
             sys.exit(0)
 
 
-async def ws_main(websocket):
+async def ws_main(websocket: websockets.asyncio.server.ServerConnection):
     #await reset_globals()
     await close_active_device()
     async for message in websocket:
@@ -287,7 +296,7 @@ async def ws_main(websocket):
         
         await parseRequest(j, websocket)
 
-async def main(port):
+async def main(port: int):
     global keep_running
     width = 80
     txt = "%s WebSocket - ATV Server" % (my_name)
