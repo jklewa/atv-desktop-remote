@@ -32,7 +32,6 @@ def capture_screenshot(is_dark_mode=False):
     
     # Inject state to show connected UI
     script = """
-    document.getElementById('initText').style.display = 'none';
     document.getElementById('topTextHeader').style.display = 'none';
     document.getElementById('topTextKBLink').style.display = 'block';
     document.querySelector('.directionTable').style.display = 'table';

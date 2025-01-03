@@ -396,7 +396,6 @@ async function askQuestion(msg) {
 }
 
 function startPairing(dev) {
-    $("#initText").hide();
     $("#results").hide();
     $("#cmdWrapper").hide();
     $("#pairButton").on('click', () => {
@@ -418,7 +417,6 @@ function submitCode() {
 }
 
 function showKeyMap() {
-    $("#initText").hide();
     $("#cmdWrapper").show();
     $(".directionTable").fadeIn();
     var tvTimer;
@@ -512,7 +510,6 @@ function setStatus(txt) {
 }
 
 function startScan() {
-    $("#initText").hide();
     $("#loader").fadeIn();
     $("#addNewElements").show();
     $("#runningElements").hide();

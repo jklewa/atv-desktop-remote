@@ -229,15 +229,6 @@ function hideWindow() {
     }
 }
 
-function getWorkingPath() {
-    var rp = process.resourcesPath;
-    if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
-    if (!app.isPackaged) {
-        rp = path.resolve(`${path.dirname(process.argv[1])}/../atv_py_env`)
-    }
-    return rp
-}
-
 function unhandleVolume() {
     volumeButtons.forEach(btn => {
         console.log(`unregister: ${btn}`)

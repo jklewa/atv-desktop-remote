@@ -4,5 +4,6 @@ env/
 env_x86/
 *.log
 .DS_Store
-app/pyscripts.js
 stopserver
+server/wsserver
+server/build/

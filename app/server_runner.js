@@ -7,7 +7,7 @@ const fs = require('fs')
 const fsp = fs.promises
 const EventEmitter = require('events');
 const path = require('path')
-const sfiles = require('./pyscripts').files;
+const {app} = require("electron");
 
 var server_events = new EventEmitter();
 var proc = null;
@@ -22,12 +22,12 @@ const MAX_RESTARTS = 3;  // Maximum number of restart attempts
 const RESTART_TIMEOUT = 5000;  // Time to wait before restart
 
 function getWorkingPath() {
-    return path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
-    // if (process.env['MYPATH']) return process.env['MYPATH'];
-    // var rp = process.resourcesPath;
-    // if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
-    // else rp = process.env['PWD'];
-    // return rp
+    var rp = process.resourcesPath;
+    if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
+    if (!app.isPackaged) {
+        rp = path.resolve(`${path.dirname(process.argv[1])}/server`)
+    }
+    return rp
 }
 
 function fileExists(fn) {
@@ -157,19 +157,6 @@ async function stopServer() {
     isShuttingDown = false;
 }
 
-function writeSupportFiles() {
-    var wpath = getWorkingPath();
-    Object.keys(sfiles).forEach(fn => {
-        var txt = sfiles[fn];
-        var out_path = path.join(wpath, fn);
-        fs.writeFileSync(out_path, txt, { encoding: 'utf-8' });
-        console.log(`Writing ${fn} to ${out_path}...`)
-        if (fn == "start_server.sh" && process.platform != "win32") {
-            fs.chmodSync(out_path, 0o755);
-        }
-    })
-}
-
 async function startServer() {
     // Reset state if server isn't actually running
     if (!proc || proc.killed) {
@@ -182,15 +169,12 @@ async function startServer() {
         return;
     }
 
-    var wpath = getWorkingPath();
-    var noWriteFiles = path.join(wpath, "skip_file_write");
-    if (!fileExistsSync(noWriteFiles)) writeSupportFiles();
-
+    const wpath = getWorkingPath();
     if (process.platform == "win32") {
-        var bat_path = path.join(wpath, 'start_server.bat')
+        const bat_path = path.join(wpath, 'start_server.bat')
         proc = spawn('cmd.exe', ['/c', bat_path], { detached: false })
     } else {
-        var sh_path = path.join(wpath, 'start_server.sh');
+        const sh_path = path.join(wpath, 'start_server.sh');
         console.log(sh_path)
         proc = spawn(sh_path, { detached: false })
     }

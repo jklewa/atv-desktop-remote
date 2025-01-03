@@ -12,10 +12,11 @@
   "bugs": "https://github.com/jklewa/atv-desktop-remote/issues",
   "main": "app/main.js",
   "scripts": {
-    "prebuild": "node build/create_python_embed.js",
+    "setup:python": ". ./env/bin/activate && pyinstaller server/wsserver.spec --distpath server --workpath server/build",
+    "prebuild": "npm run setup:python",
     "build": "electron-builder -c.mac.identity=null",
     "postinstall": "electron-builder install-app-deps",
-    "prestart": "node build/create_python_embed.js",
+    "prestart": "npm run setup:python",
     "start": "electron app"
   },
   "devDependencies": {
@@ -69,8 +70,15 @@
         "vPrefixedTagName": true
       }
     ],
-    "extraFiles": [
-      "server/wsserver.py"
+    "extraResources": [
+        {
+            "from": "./server",
+            "to": "./",
+            "filter": [
+              "start_server.*",
+              "wsserver*"
+            ]
+        }
     ]
   },
   "productName": "ATV Remote"
