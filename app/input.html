@@ -22,6 +22,9 @@
     <p class="info-text"><span style="opacity: 0.5">⚪️</span> = connected device does not appear to be accepting text input</p>
 
     <script>
+        const {log} = require('./log');
+        // Override console.log/info/warn/error
+        Object.assign(console, log.functions);
         document.hidden = true;
         const { nativeTheme } = require('@electron/remote');
         const { ipcRenderer } = require('electron');
@@ -97,6 +100,10 @@
             textInput.focus();
             handleDarkMode();
             checkATVInputState();
+        };
+        window.onbeforeunload = function(event) {
+            if (kbFocusInterval) clearInterval(kbFocusInterval);
+            return event
         };
     </script>
 </body>
