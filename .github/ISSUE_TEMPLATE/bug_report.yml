@@ -1,0 +1,42 @@
+name: Bug report
+description: Create a report to help us improve
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: description
+    attributes:
+      label: Describe the bug
+      placeholder: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      value: |-
+        1. Go to '...'
+        2. Click on '....'
+        3. See error
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        examples:
+          - **OS**: macOS 15.2, Windows 11, Linux
+          - **Arch**: M1/arm64, Intel/x86_64, other
+          - **Python**: 3.9 (minimum supported)
+      value: |
+        - OS: 
+        - Arch: 
+        - Python:
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem
