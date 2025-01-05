@@ -1,17 +1,8 @@
-var atv_credentials = false;
-var pairDevice = "";
 var { ipcRenderer } = require('electron');
-var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote');
-var mb = getGlobal('MB');
 const path = require('path');
-var device = false;
-var qPresses = 0;
-var playstate = false;
-var previousKeys = []
-
-const {
-    connection_failure,
-    atv_connected,
+var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote');
+var { state, events, getCreds, setCreds } = require('./shared');
+var {
     ws_connect,
     ws_finishPair1,
     ws_finishPair2,
@@ -22,6 +13,8 @@ const {
     ws_startPair,
     ws_startScan,
 } = require("./ws_remote");
+
+var mb = getGlobal('MB');
 
 const ws_keymap = {
     "ArrowUp": "up",
@@ -99,8 +92,8 @@ ipcRenderer.on('scanDevicesResult', (event, ks) => {
 })
 
 ipcRenderer.on('pairCredentials', (event, arg) => {
-    saveRemote(pairDevice, arg);
-    localStorage.setItem('atvcreds', JSON.stringify(getCreds(pairDevice)));
+    saveRemote(state.pairDevice, arg);
+    localStorage.setItem('atvcreds', JSON.stringify(getCreds(state.pairDevice)));
     connectToATV();
 })
 
@@ -142,10 +135,10 @@ window.addEventListener('beforeunload', async e => {
     delete e['returnValue'];
     try {
         ipcRenderer.invoke('debug', 'beforeunload called')
-        if (!device) return;
-        device.removeAllListeners('message');
+        if (!state.device) return;
+        state.device.removeAllListeners('message');
         ipcRenderer.invoke('debug', 'messages unregistered')
-        await device.closeConnection()
+        await state.device.closeConnection()
         ipcRenderer.invoke('debug', 'connection closed')
     } catch (err) {
         console.log(err);
@@ -208,11 +201,11 @@ window.addEventListener('keydown', e => {
     if (mods.length > 0) return;
 
     if (key == 'q') {
-        qPresses++;
-        console.log(`qPresses ${qPresses}`)
-        if (qPresses == 3) ipcRenderer.invoke('quit');
+        state.qPresses++;
+        console.log(`qPresses ${state.qPresses}`)
+        if (state.qPresses == 3) ipcRenderer.invoke('quit');
     } else {
-        qPresses = 0;
+        state.qPresses = 0;
     }
     if (key == 'h') {
         ipcRenderer.invoke('hideWindow');
@@ -239,6 +232,9 @@ window.addEventListener('keydown', e => {
     })
 })
 
+events.on('createDropdown', (ks) => {
+    createDropdown(ks);
+})
 function createDropdown(ks) {
     $("#loader").hide();
     var txt = "";
@@ -266,14 +262,14 @@ function createDropdown(ks) {
     }).on('change', () => {
         var vl = $("#atv_picker").val();
         if (vl) {
-            pairDevice = vl;
+            state.pairDevice = vl;
             startPairing(vl);
         }
     })
 }
 
 function createATVDropdown() {
-    if (connection_failure) {
+    if (state.connection_failure) {
         setStatus("No Connection");
     } else {
         $("#statusText").hide();
@@ -319,8 +315,8 @@ function createATVDropdown() {
                 startScan();
                 return;
             } else {
-                pairDevice = vl;
-                localStorage.setItem('atvcreds', JSON.stringify(getCreds(vl)));
+                state.pairDevice = vl;
+                setCreds(vl)
                 connectToATV();
             }
         }
@@ -335,7 +331,7 @@ function showAndFade(text) {
 }
 
 function _updatePlayState() {
-    var label = (device.playing ? "Pause" : "Play")
+    var label = (state.device.playing ? "Pause" : "Play")
     console.log(`Update play state: ${label}`)
     $(`[data-key="Pause"] .keyText`).html(label);
 }
@@ -346,7 +342,7 @@ async function sendCommand(k, shifted) {
     if (k == 'Pause') k = 'Space';
     var rcmd = ws_keymap[k];
     if (Object.values(ws_keymap).indexOf(k) > -1) rcmd = k;
-    if (typeof(rcmd) === 'function') rcmd = rcmd(device);
+    if (typeof(rcmd) === 'function') rcmd = rcmd(state.device);
 
     var classkey = rcmd;
     if (classkey == 'Play') classkey = 'Pause';
@@ -367,8 +363,8 @@ async function sendCommand(k, shifted) {
         return;
     }
     console.log(`Keydown: ${k}, sending command: ${rcmd} (shifted: ${shifted})`)
-    previousKeys.push(rcmd);
-    if (previousKeys.length > 10) previousKeys.shift()
+    state.previousKeys.push(rcmd);
+    if (state.previousKeys.length > 10) state.previousKeys.shift()
     var desc = rcmd;
     if (desc == 'volume_down') desc = 'Lower Volume'
     if (desc == 'volume_up') desc = 'Raise Volume'
@@ -388,7 +384,7 @@ function getWorkingPath() {
 }
 
 function isConnected() {
-    return atv_connected
+    return state.atv_connected
 }
 
 async function askQuestion(msg) {
@@ -452,7 +448,7 @@ function showKeyMap() {
         sendCommand('Tv');
     });
 
-    var creds = _getCreds();
+    var creds = getCreds();
     if (Object.keys(creds).indexOf("Companion") > -1) {
         $("#topTextHeader").hide();
         $("#topTextKBLink").show();
@@ -466,32 +462,33 @@ function showKeyMap() {
     $("#closeShortcuts").off('click').on('click', toggleKeyboardShortcuts);
 }
 
-var connecting = false;
-
 function handleMessage(msg) {
-    device.lastMessages.push(JSON.parse(JSON.stringify(msg)));
-    while (device.lastMessages.length > 100) device.lastMessages.shift();
+    state.device.lastMessages.push(JSON.parse(JSON.stringify(msg)));
+    while (state.device.lastMessages.length > 100) state.device.lastMessages.shift();
     if (msg.type == 4) {
         try {
-            device.bundleIdentifier = msg.payload.playerPath.client.bundleIdentifier;
-            var els = device.bundleIdentifier.split('.')
+            state.device.bundleIdentifier = msg.payload.playerPath.client.bundleIdentifier;
+            var els = state.device.bundleIdentifier.split('.')
             var nm = els[els.length - 1];
         } catch (err) {}
         if (msg && msg.payload && msg.payload.playbackState) {
-            device.playing = msg.payload.playbackState == 1;
-            device.lastMessage = JSON.parse(JSON.stringify(msg))
+            state.device.playing = msg.payload.playbackState == 1;
+            state.device.lastMessage = JSON.parse(JSON.stringify(msg))
             _updatePlayState();
         }
         if (msg && msg.payload && msg.payload.playbackQueue && msg.payload.playbackQueue.contentItems && msg.payload.playbackQueue.contentItems.length > 0) {
             console.log('got playback item');
-            device.playbackItem = JSON.parse(JSON.stringify(msg.payload.playbackQueue.contentItems[0]));
+            state.device.playbackItem = JSON.parse(JSON.stringify(msg.payload.playbackQueue.contentItems[0]));
         }
     }
 }
 
+events.on('connectToATV', () => {
+    connectToATV();
+})
 async function connectToATV() {
-    if (connecting) return;
-    connecting = true;
+    if (state.connecting) return;
+    state.connecting = true;
     setStatus("Connecting to ATV...");
     $("#runningElements").show();
     atv_credentials = JSON.parse(localStorage.getItem('atvcreds'))
@@ -501,9 +498,13 @@ async function connectToATV() {
     await ws_connect(atv_credentials);
     createATVDropdown();
     showKeyMap();
-    connecting = false;
+    state.connecting = false;
 }
 
+
+events.on('saveRemote', (name, creds) => {
+    saveRemote(name, creds);
+})
 function saveRemote(name, creds) {
     var ar = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
     if (typeof creds == 'string') creds = JSON.parse(creds);
@@ -541,28 +542,6 @@ function handleDarkMode() {
         $("#s2style-sheet").attr('href', 'css/select2.min.css')
         ipcRenderer.invoke('uimode', 'lightmode');
     }
-}
-
-function _getCreds(nm) {
-    var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
-    var ks = Object.keys(creds);
-    if (ks.length === 0) {
-        return {};
-    }
-    if (typeof nm == 'undefined' && ks.length > 0) {
-        return creds[ks[0]]
-    } else {
-        if (Object.keys(creds).indexOf(nm) > -1) {
-            localStorage.setItem('currentDeviceID', nm)
-            return creds[nm];
-        }
-    }
-}
-
-function getCreds(nm) {
-    var r = _getCreds(nm);
-    while (typeof r == 'string') r = JSON.parse(r);
-    return r;
 }
 
 function setAlwaysOnTop(tf) {
@@ -634,6 +613,10 @@ async function helpMessage()
     await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: `Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press ${shortcut} (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.` })
 }
 
+
+events.on('init', (callback) => {
+    init().then(callback)
+})
 async function init() {
     handleDarkMode();
     handleContextMenu();
@@ -656,7 +639,7 @@ async function init() {
         creds = JSON.parse(localStorage.getItem('atvcreds') || "false")
     } catch {
         creds = getCreds();
-        if (creds) localStorage.setItem('atvcreds', JSON.stringify(creds));
+        if (creds) setCreds(creds);
     }
     if (localStorage.getItem('firstRun') != 'false') {
         localStorage.setItem('firstRun', 'false');
@@ -686,10 +669,3 @@ $(function() {
     var wp = getWorkingPath();
     $("#workingPathSpan").html(`<strong>${wp}</strong>`)
 })
-
-module.exports = {
-    connectToATV,
-    createDropdown,
-    saveRemote,
-    init
-}

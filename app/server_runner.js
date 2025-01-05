@@ -159,6 +159,9 @@ async function stopServer() {
 
 function writeSupportFiles() {
     var wpath = getWorkingPath();
+    if (!fs.existsSync(wpath)){
+        fs.mkdirSync(wpath, { recursive: true });
+    }
     Object.keys(sfiles).forEach(fn => {
         var txt = sfiles[fn];
         var out_path = path.join(wpath, fn);

@@ -1,10 +1,11 @@
 const {log} = require('./log');
 require('@electron/remote');
-const {ipcRenderer} = require('electron');
+var { ipcRenderer } = require('electron');
 // Override console.log/info/warn/error
 Object.assign(console, log.functions);
 const WebSocket = require('ws').WebSocket
 const EventEmitter = require('events');
+var { state, events, getCreds } = require('./shared');
 
 // WebSocketClient.prototype.reconnect = function(e) {
 //     console.log(`WebSocketClient: retry in ${this.autoReconnectInterval}ms`, e);
@@ -16,42 +17,28 @@ const EventEmitter = require('events');
 //     }, this.autoReconnectInterval);
 // }
 
-
-var ws = false;
-
-var ws_timeout = false;
-var ws_watchdog = false;
-var scanWhenOpen = false;
-var ws_connecting = false;
-var ws_connected = false;
-var ws_start_tm = false;
-var connection_failure = false;
-var atv_connected = false;
-var ws_pairDevice = "";
-
 var ws_url = 'ws://localhost:8765'
 
 var atv_events = new EventEmitter();
-var pending = []
 
 var ws_timeout_interval = 800;
 
 function sendMessage(command, data) {
     if (typeof data == "undefined") data = "";
-    if (!ws) {
-        pending.push([command, data]);
+    if (!state.ws) {
+        state.pending.push([command, data]);
         return;
     }
-    while (pending.length > 0) {
-        var cmd_ar = pending.shift();
-        ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
+    while (state.pending.length > 0) {
+        var cmd_ar = state.pending.shift();
+        state.ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
     }
     if (command === "kbfocus") {
         console.debug(`sendMessage: {cmd:${command}, data:${JSON.stringify(data)}}`)
     } else {
         console.log(`sendMessage: {cmd:${command}, data:${JSON.stringify(data)}}`)
     }
-    ws.send(JSON.stringify({ cmd: command, data: data }))
+    state.ws.send(JSON.stringify({ cmd: command, data: data }))
 }
 
 function killServer() {
@@ -65,11 +52,11 @@ function killServer() {
 }
 
 function reconnect() {
-    if (ws_timeout) return;
-    ws_timeout = setTimeout(() => {
-        ws_timeout = false;
+    if (state.ws_timeout) return;
+    state.ws_timeout = setTimeout(() => {
+        state.ws_timeout = false;
         try {
-            if (ws) ws.removeAllListeners();
+            if (state.ws) state.ws.removeAllListeners();
         } catch (ex) {}
 
         startWebsocket();
@@ -77,22 +64,21 @@ function reconnect() {
 }
 
 function startWebsocket() {
-    ws = new WebSocket(ws_url, {
+    state.ws = new WebSocket(ws_url, {
         perMessageDeflate: false
     });
 
-    ws.once('open', function open() {
-        ws_connected = true;
+    state.ws.once('open', function open() {
+        state.ws_connected = true;
         console.log('ws open');
-        if (scanWhenOpen) ws_startScan();
-        //sendMessage("scan");
-        init().then(() => {
+        if (state.scanWhenOpen) ws_startScan();
+        events.emit('init', () => {
             console.log('init complete');
-        })
+        });
     });
 
-    ws.on('close', function close(code, reason) {
-        ws_connected = false;
+    state.ws.on('close', function close(code, reason) {
+        state.ws_connected = false;
         reconnect();
         switch (code) {
             case 1000: //  1000 indicates a normal closure, meaning that the purpose for which the connection was established has been fulfilled.
@@ -104,7 +90,7 @@ function startWebsocket() {
         }
     });
 
-    ws.on('message', function message(data) {
+    state.ws.on('message', function message(data) {
         if (data.includes("kbfocus")) {
             console.debug('received: %s', data.toString());
         } else {
@@ -113,18 +99,18 @@ function startWebsocket() {
         var j = JSON.parse(data);
         if (j.command == "scanResult") {
             console.log(`Results: ${j.data}`)
-            createDropdown(j.data);
+            events.emit('createDropdown', j.data);
         }
         if (j.command == "pairCredentials") {
-            console.log("pairCredentials", ws_pairDevice, j.data);
-            saveRemote(ws_pairDevice, j.data);
-            localStorage.setItem('atvcreds', JSON.stringify(getCreds(pairDevice)));
-            connectToATV();
+            console.log("pairCredentials", state.ws_pairDevice, j.data);
+            events.emit('saveRemote', state.ws_pairDevice, j.data);
+            localStorage.setItem('atvcreds', JSON.stringify(getCreds(state.pairDevice)));
+            events.emit('connectToATV')
         }
         if (j.command == "connected") {
-            atv_connected = !!j.data?.connected;
-            connection_failure = j.data?.error != null;
-            atv_events.emit("connected", atv_connected);
+            state.atv_connected = !!j.data?.connected;
+            state.connection_failure = j.data?.error != null;
+            atv_events.emit("connected", state.atv_connected);
         }
         if (j.command == "startPair2") {
             $("#pairStepNum").html("2");
@@ -150,10 +136,10 @@ function startWebsocket() {
 }
 
 function ws_startScan() {
-    connection_failure = false;
-    if (ws_connected) sendMessage("scan");
+    state.connection_failure = false;
+    if (state.ws_connected) sendMessage("scan");
     else {
-        scanWhenOpen = true;
+        state.scanWhenOpen = true;
     }
 }
 
@@ -169,56 +155,56 @@ function ws_sendCommandAction(cmd, taction) {
 }
 
 function ws_connect(creds) {
-    if (ws_connecting) return;
-    ws_start_tm = Date.now();
-    ws_connecting = true;
+    if (state.ws_connecting) return;
+    state.ws_start_tm = Date.now();
+    state.ws_connecting = true;
     return new Promise((resolve) => {
         console.log(`ws_connect: ${creds}`)
         sendMessage("connect", creds)
         atv_events.once("connected", () => {
-            ws_connecting = false;
-            ws_start_tm = false;
+            state.ws_connecting = false;
+            state.ws_start_tm = false;
             resolve();
         });
     })
 }
 
 function ws_startPair(dev) {
-    connection_failure = false;
+    state.connection_failure = false;
     console.log(`ws_startPair: ${dev}`)
-    ws_pairDevice = dev;
+    state.ws_pairDevice = dev;
     sendMessage("startPair", dev);
 }
 
 function ws_finishPair(code) {
-    connection_failure = false;
+    state.connection_failure = false;
     console.log(`ws_finishPair: ${code}`)
     sendMessage("finishPair", code);
 }
 
 function ws_finishPair1(code) {
-    connection_failure = false;
+    state.connection_failure = false;
     console.log(`ws_finishPair: ${code}`)
     sendMessage("finishPair1", code);
 }
 
 function ws_finishPair2(code) {
-    connection_failure = false;
+    state.connection_failure = false;
     console.log(`ws_finishPair: ${code}`)
     sendMessage("finishPair2", code);
 }
 
 function checkWSConnection() {
     var timedOut = false;
-    if (ws_start_tm) {
-        var diff = Date.now() - ws_start_tm;
+    if (state.ws_start_tm) {
+        var diff = Date.now() - state.ws_start_tm;
         if (diff > 3000) {
             console.log('ws connection timed out, retrying')
-            ws_connecting = false;
+            state.ws_connecting = false;
             timedOut = true;
         }
     }
-    if (!ws_connected) {
+    if (!state.ws_connected) {
         console.log('restarting websocket');
         startWebsocket();
     }
@@ -229,7 +215,7 @@ function ws_init() {
     startWebsocket();
     setTimeout(() => {
         // not sure if needed, but server start now tries to install required python packages which can be slow
-        ws_watchdog = setInterval(() => {
+        state.ws_watchdog = setInterval(() => {
             checkWSConnection()
         }, 5000);
     }, 15000)
@@ -249,12 +235,6 @@ function ws_server_started() {
 var readyCount = 0;
 
 $(function() {
-    // Avoid circular import with ws_remote.js
-    let {connectToATV, createDropdown, saveRemote, init} = require("./web_remote");
-    global.connectToATV = connectToATV;
-    global.createDropdown = createDropdown;
-    global.saveRemote = saveRemote;
-    global.init = init;
     incReady();
 });
 
@@ -268,6 +248,4 @@ module.exports = {
     ws_finishPair2,
     ws_server_started,
     sendMessage,
-    connection_failure,
-    atv_connected,
 }
