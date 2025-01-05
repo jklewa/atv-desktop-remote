@@ -1,5 +1,6 @@
 const {log} = require('./log');
 require('@electron/remote');
+const {ipcRenderer} = require('electron');
 // Override console.log/info/warn/error
 Object.assign(console, log.functions);
 const WebSocket = require('ws').WebSocket
@@ -248,5 +249,25 @@ function ws_server_started() {
 var readyCount = 0;
 
 $(function() {
+    // Avoid circular import with ws_remote.js
+    let {connectToATV, createDropdown, saveRemote, init} = require("./web_remote");
+    global.connectToATV = connectToATV;
+    global.createDropdown = createDropdown;
+    global.saveRemote = saveRemote;
+    global.init = init;
     incReady();
 });
+
+module.exports = {
+    ws_startScan,
+    ws_sendCommand,
+    ws_sendCommandAction,
+    ws_connect,
+    ws_startPair,
+    ws_finishPair1,
+    ws_finishPair2,
+    ws_server_started,
+    sendMessage,
+    connection_failure,
+    atv_connected,
+}

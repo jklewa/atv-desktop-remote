@@ -1,15 +1,27 @@
 var atv_credentials = false;
-var lodash = _ = require('./js/lodash.min');
 var pairDevice = "";
-var electron = require('electron')
-var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote')
-var ipcRenderer = electron.ipcRenderer;
+var { ipcRenderer } = require('electron');
+var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote');
 var mb = getGlobal('MB');
 const path = require('path');
 var device = false;
 var qPresses = 0;
 var playstate = false;
 var previousKeys = []
+
+const {
+    connection_failure,
+    atv_connected,
+    ws_connect,
+    ws_finishPair1,
+    ws_finishPair2,
+    sendMessage,
+    ws_sendCommand,
+    ws_sendCommandAction,
+    ws_server_started,
+    ws_startPair,
+    ws_startScan,
+} = require("./ws_remote");
 
 const ws_keymap = {
     "ArrowUp": "up",
@@ -328,8 +340,6 @@ function _updatePlayState() {
     $(`[data-key="Pause"] .keyText`).html(label);
 }
 
-var updatePlayState = lodash.debounce(_updatePlayState, 300);
-
 async function sendCommand(k, shifted) {
     if (typeof shifted === 'undefined') shifted = false;
     console.log(`sendCommand: ${k}`)
@@ -494,8 +504,6 @@ async function connectToATV() {
     connecting = false;
 }
 
-var _connectToATV = lodash.debounce(connectToATV, 300);
-
 function saveRemote(name, creds) {
     var ar = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
     if (typeof creds == 'string') creds = JSON.parse(creds);
@@ -658,7 +666,7 @@ async function init() {
 
     if (creds && creds.credentials && creds.identifier) {
         atv_credentials = creds;
-        connectToATV();
+        await connectToATV();
     } else {
         startScan();
     }
@@ -678,3 +686,10 @@ $(function() {
     var wp = getWorkingPath();
     $("#workingPathSpan").html(`<strong>${wp}</strong>`)
 })
+
+module.exports = {
+    connectToATV,
+    createDropdown,
+    saveRemote,
+    init
+}
