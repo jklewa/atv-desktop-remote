@@ -21,14 +21,19 @@ const ws_keymap = {
     "ArrowDown": "down",
     "ArrowLeft": "left",
     "ArrowRight": "right",
+    "Tv": "home",
     "t": "home",
+    "LongTv": "home_hold",
     "l": "home_hold",
     "Backspace": "menu",
     "Escape": "menu",
+    "m": "menu",
     "Space": "play_pause",
     "Enter": "select",
     "Previous": "skip_backward",
+    "p": "skip_backward",
     "Next": "skip_forward",
+    "n": "skip_forward",
     "[": "skip_backward",
     "]": "skip_forward",
     "g": "top_menu",
@@ -36,55 +41,21 @@ const ws_keymap = {
     "=": "volume_up",
     "-": "volume_down",
     "_": "volume_down",
-    "p": "power"
+    // "0": "volume_mute", //unsupported by pyatv
+    "o": "power",
 }
 
-const keymap = {
-    'ArrowLeft': 'Left',
-    'ArrowRight': 'Right',
-    'ArrowUp': 'Up',
-    'ArrowDown': 'Down',
-    'Enter': 'Select',
-    'Space': (latv) => {
-        var v = latv.playing;
-        latv.playing = !latv.playing;
-        if (v) {
-            return 'Pause';
-        } else {
-            return 'Play'
-        }
-    },
-    'Backspace': 'Menu',
-    'Escape': 'Menu',
-    'Next': 'Next',
-    'Previous': 'Previous',
-    'n': 'Next',
-    'p': 'Previous',
-    ']': 'Next',
-    '[': 'Previous',
-    't': 'Tv',
-    'l': 'LongTv'
-}
-
-const niceButtons = {
-    "TV": "Tv",
-    "play/pause": "play_pause",
-    'Lower Volume': 'volume_down',
-    'Raise Volume': 'volume_up',
-    'Power': 'power'
-}
-
-const keyDesc = {
-    'Space': 'Pause/Play',
-    'ArrowLeft': 'left arrow',
-    'ArrowRight': 'right arrow',
-    'ArrowUp': 'up arrow',
-    'ArrowDown': 'down arrow',
-    'Backspace': 'Menu',
-    'Escape': 'Menu',
-    't': 'TV Button',
-    'l': 'Long-press TV Button',
-    'p': 'Power'
+const desc_rcmdmap = {
+    "skip_forward": "Next",
+    "skip_backward": "Previous",
+    "volume_down": "Lower Volume",
+    "volume_up": "Raise Volume",
+    // "volume_mute": "Mute/Unmute", //unsupported by pyatv
+    "play_pause": "Play/Pause",
+    "menu": "Menu",
+    "home": "TV",
+    "home_hold": "TV Long Press",
+    // "power": null, // handled separately
 }
 
 ipcRenderer.on('scanDevicesResult', (event, ks) => {
@@ -184,13 +155,12 @@ window.addEventListener('keydown', e => {
     if (key == ' ') key = 'Space';
     var mods = ["Control", "Shift", "Alt", "Option", "Fn", "Hyper", "OS", "Super", "Meta", "Win"].filter(mod => { return e.getModifierState(mod) })
 
-    // If shortcuts overlay is visible, only allow Escape key
+    // If shortcuts overlay is visible, escape key should close it
     if ($("#keyboardShortcuts").is(":visible")) {
         if (key === 'Escape') {
             toggleKeyboardShortcuts();
+            return;
         }
-        e.preventDefault();
-        return;
     }
 
     var shifted = false;
@@ -330,12 +300,6 @@ function showAndFade(text) {
     });
 }
 
-function _updatePlayState() {
-    var label = (state.device.playing ? "Pause" : "Play")
-    console.log(`Update play state: ${label}`)
-    $(`[data-key="Pause"] .keyText`).html(label);
-}
-
 async function sendCommand(k, shifted) {
     if (typeof shifted === 'undefined') shifted = false;
     console.log(`sendCommand: ${k}`)
@@ -353,10 +317,6 @@ async function sendCommand(k, shifted) {
             el.removeClass('invert');
         }, 500);
     }
-    if (k == 'Space') {
-        var pptxt = rcmd == "Pause" ? "Play" : "Pause";
-        el.find('.keyText').html(pptxt);
-    }
     if (rcmd === 'power') {
         sendMessage("power_toggle");
         showAndFade("Power");
@@ -365,12 +325,7 @@ async function sendCommand(k, shifted) {
     console.log(`Keydown: ${k}, sending command: ${rcmd} (shifted: ${shifted})`)
     state.previousKeys.push(rcmd);
     if (state.previousKeys.length > 10) state.previousKeys.shift()
-    var desc = rcmd;
-    if (desc == 'volume_down') desc = 'Lower Volume'
-    if (desc == 'volume_up') desc = 'Raise Volume'
-    if (desc == 'play_pause') desc = "play/pause"
-    if (desc == 'Tv') desc = 'TV'
-    if (desc == 'LongTv') desc = 'TV long press'
+    var desc = desc_rcmdmap[rcmd] || rcmd;
     showAndFade(desc);
     if (shifted) {
         ws_sendCommandAction(rcmd, "Hold")
@@ -460,27 +415,6 @@ function showKeyMap() {
     // Initialize help icon and close button click handlers
     $("#helpIcon").off('click').on('click', toggleKeyboardShortcuts);
     $("#closeShortcuts").off('click').on('click', toggleKeyboardShortcuts);
-}
-
-function handleMessage(msg) {
-    state.device.lastMessages.push(JSON.parse(JSON.stringify(msg)));
-    while (state.device.lastMessages.length > 100) state.device.lastMessages.shift();
-    if (msg.type == 4) {
-        try {
-            state.device.bundleIdentifier = msg.payload.playerPath.client.bundleIdentifier;
-            var els = state.device.bundleIdentifier.split('.')
-            var nm = els[els.length - 1];
-        } catch (err) {}
-        if (msg && msg.payload && msg.payload.playbackState) {
-            state.device.playing = msg.payload.playbackState == 1;
-            state.device.lastMessage = JSON.parse(JSON.stringify(msg))
-            _updatePlayState();
-        }
-        if (msg && msg.payload && msg.payload.playbackQueue && msg.payload.playbackQueue.contentItems && msg.payload.playbackQueue.contentItems.length > 0) {
-            console.log('got playback item');
-            state.device.playbackItem = JSON.parse(JSON.stringify(msg.payload.playbackQueue.contentItems[0]));
-        }
-    }
 }
 
 events.on('connectToATV', () => {
