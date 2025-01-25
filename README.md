@@ -46,7 +46,8 @@ Minimum Requirements: macOS 11 (Big Sur), Windows 10, Ubuntu 18.04, Fedora 32, D
  3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
  4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
  5. Press `CmdOrCtrl+Shift+0` to open the application from anywhere.
-    * A `hotkey.txt` with a valid [accelerator](https://www.electronjs.org/docs/api/accelerator) in the application's data directory will override this.
+    * Can be customized: `Menubar -> ATV Icon (right click) -> Change hotkey/accelerator`
+    * A valid [accelerator](https://www.electronjs.org/docs/api/accelerator) pattern will be stored in `hotkey.txt`
 
 ## Building
 
