@@ -1,5 +1,6 @@
 var { ipcRenderer } = require('electron');
 const path = require('path');
+const fs = require('fs');
 var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote');
 var { state, events, getCreds, setCreds } = require('./shared');
 var {
@@ -116,11 +117,23 @@ window.addEventListener('beforeunload', async e => {
     }
 });
 
+function loadWindowHotkey() {
+    // It's not ideal to hardcode the hotkey. It would be better to get it from the main process.
+    let hotkey = process.platform === 'darwin' ? 'Cmd+Shift+0' : 'Ctrl+Shift+0';
+    const hotkeyPath = path.join(getWorkingPath(), 'hotkey.txt');
+    if (fs.existsSync(hotkeyPath)) {
+        hotkey = fs.readFileSync(hotkeyPath, 'utf8').trim();
+    }
+    hotkey = hotkey.replaceAll("+", "<wbr>+")
+    $(`[data-shortcut="show"]`).html(hotkey);
+}
+
 function toggleKeyboardShortcuts() {
     const shortcuts = $("#keyboardShortcuts");
     if (shortcuts.is(":visible")) {
         shortcuts.fadeOut(200);
     } else {
+        loadWindowHotkey();
         shortcuts.fadeIn(200);
     }
 }
@@ -509,6 +522,10 @@ async function confirmExit() {
     app.quit();
 }
 
+function changeHotkeyClick (event) {
+    ipcRenderer.invoke('loadHotkeyWindow');
+}
+
 function handleContextMenu() {
     let tray = mb.tray
     var mode = localStorage.getItem('uimode') || 'systemmode';
@@ -526,6 +543,7 @@ function handleContextMenu() {
         { role: 'about', label: 'About' },
         { type: 'separator' },
         { label: 'Appearance', submenu: subMenu, click: subMenuClick },
+        { label: 'Change hotkey/accelerator', click: changeHotkeyClick },
         { type: 'separator' },
         { label: 'Quit', click: confirmExit }
     ]);
@@ -542,9 +560,9 @@ function toggleAlwaysOnTop(event) {
 
 async function helpMessage()
 {
-    // It's not ideal to hardcode the shortcut. It would be better to get it from the main process.
-    const shortcut = process.platform === 'darwin' ? 'Command+Shift+0' : 'Ctrl+Shift+0';
-    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: `Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press ${shortcut} (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.` })
+    // It's not ideal to hardcode the hotkey. It would be better to get it from the main process.
+    const hotkey = process.platform === 'darwin' ? 'Cmd+Shift+0' : 'Ctrl+Shift+0';
+    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: `Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press ${hotkey} (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.` })
 }
 
 

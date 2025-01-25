@@ -56,6 +56,27 @@ if (!gotTheLock) {
     })
 }
 
+function createHotkeyWindow() {
+    hotkeyWindow = new BrowserWindow({
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        width: 400,
+        height: 400,
+    });
+    require('@electron/remote/main').enable(hotkeyWindow.webContents)
+    hotkeyWindow.loadFile('hotkey.html');
+    hotkeyWindow.setMenu(null);
+    hotkeyWindow.on('close', (event) => {
+        event.preventDefault();
+        if (!registerHotkeys()) {
+            return false;
+        }
+        hotkeyWindow.hide();
+    });
+}
+
 function createInputWindow() {
     secondWindow = new BrowserWindow({
         webPreferences: {
@@ -126,7 +147,9 @@ function createWindow() {
             console.log('Received input:', data);
             win.webContents.send('input-change', data);
         });
-
+        ipcMain.handle("loadHotkeyWindow", (event) => {
+            createHotkeyWindow();
+        })
         ipcMain.handle('debug', (event, arg) => {
             console.log(`ipcDebug: ${arg}`)
         })
@@ -253,6 +276,43 @@ function handleVolume() {
     })
 }
 
+function registerHotkeys() {
+    let hotkeys = [process.platform === 'darwin' ? 'Cmd+Shift+0' : 'Ctrl+Shift+0']
+    let hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
+    try {
+        globalShortcut.unregisterAll();
+    } catch (err) {
+        console.warn(`Error unregistering hotkeys: ${err}`)
+    }
+    if (fs.existsSync(hotkeyPath)) {
+        const hotkeysContent = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
+        if (hotkeysContent.indexOf(",") > -1) {
+            hotkeys = hotkeysContent.split(',').map(el => { return el.trim() });
+        } else {
+            hotkeys = [hotkeysContent];
+        }
+    }
+    console.log(`Registering custom hotkeys: ${hotkeys}`)
+    try {
+        globalShortcut.registerAll(hotkeys, () => {
+            if (mb.window.isVisible()) {
+                hideWindow();
+            } else {
+                showWindow();
+            }
+        })
+    } catch (err) {
+        if (err instanceof TypeError) {
+            console.error(`Error registering hotkeys: ${err.message}`)
+            dialog.showErrorBox("Hotkey Error", "Invalid hotkey: " + hotkeys.join(", "));
+        } else {
+            console.error(`Error registering hotkeys: ${err}`)
+        }
+        return false;
+    }
+    return true;
+}
+
 app.whenReady().then(() => {
     server_runner.testPythonExists().then(r => {
         console.log(`python exists: ${r}`)
@@ -273,24 +333,8 @@ app.whenReady().then(() => {
         showWindow();
     })
 
-    let hotkeys = ['CommandOrControl+Shift+0']
-    let hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
-    if (fs.existsSync(hotkeyPath)) {
-        const hotkeysContent = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
-        if (hotkeysContent.indexOf(",") > -1) {
-            hotkeys = hotkeysContent.split(',').map(el => { return el.trim() });
-        } else {
-            hotkeys = [hotkeysContent];
-        }
-    }
-    console.log(`Registering custom hotkeys: ${hotkeys}`)
-    globalShortcut.registerAll(hotkeys, () => {
-        if (mb.window.isVisible()) {
-            hideWindow();
-        } else {
-            showWindow();
-        }
-    })
+    registerHotkeys();
+
     var version = app.getVersion();
     app.setAboutPanelOptions({
         applicationName: "ATV Remote",

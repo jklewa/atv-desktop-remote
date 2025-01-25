@@ -424,8 +424,11 @@ div.footer {
 }
 
 .shortcutKey {
+    max-width: 70%;
+    overflow-wrap: break-word;
+    text-align: right;
     font-weight: bold;
-    padding: 4px 8px;
+    padding: 2px 8px;
     border-radius: 4px;
     background: #eee;
     margin-left: 10px;
