@@ -1,19 +1,76 @@
-var { ipcRenderer } = require('electron');
+// ATV Remote using Websockets
+
 const path = require('path');
 const fs = require('fs');
+const EventEmitter = require('events');
+
+var { ipcRenderer } = require('electron');
+
+const {log} = require('./log');
+// Override console.log/info/warn/error
+Object.assign(console, log.functions);
+
+/**
+ * Common
+ */
+
+const state = {
+    atv_credentials: false,
+    pairDevice: "",
+    device: false,
+    playstate: false,
+    connecting: false,
+    online: true,
+    ws: false,
+    qPresses: 0,
+    previousKeys: [],
+
+    ws_timeout: false,
+    ws_watchdog: false,
+    scanWhenOpen: false,
+    ws_connecting: false,
+    ws_connected: false,
+    ws_start_tm: false,
+    connection_failure: false,
+    atv_connected: false,
+    ws_pairDevice: "",
+    pending: [],
+};
+
+// Event emitter for cross-module communication
+const events = new EventEmitter();
+
+function _getCreds(nm) {
+    var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
+    var ks = Object.keys(creds);
+    if (ks.length === 0) {
+        return {};
+    }
+    if (typeof nm == 'undefined' && ks.length > 0) {
+        return creds[ks[0]]
+    } else {
+        if (Object.keys(creds).indexOf(nm) > -1) {
+            localStorage.setItem('currentDeviceID', nm)
+            return creds[nm];
+        }
+    }
+}
+
+function getCreds(nm) {
+    var r = _getCreds(nm);
+    while (typeof r == 'string') r = JSON.parse(r);
+    return r;
+}
+
+function setCreds(vl) {
+    localStorage.setItem('atvcreds', JSON.stringify(getCreds(vl)));
+}
+
+/**
+ * Web
+ */
+
 var { Menu, dialog, nativeTheme, app, getGlobal } = require('@electron/remote');
-var { state, events, getCreds, setCreds } = require('./shared');
-var {
-    ws_connect,
-    ws_finishPair1,
-    ws_finishPair2,
-    sendMessage,
-    ws_sendCommand,
-    ws_sendCommandAction,
-    ws_server_started,
-    ws_startPair,
-    ws_startScan,
-} = require("./ws_remote");
 
 var mb = getGlobal('MB');
 
@@ -57,6 +114,10 @@ const desc_rcmdmap = {
     "home": "TV",
     "home_hold": "TV Long Press",
     // "power": null, // handled separately
+    "left": "Left",
+    "right": "Right",
+    "up": "Up",
+    "down": "Down",
 }
 
 ipcRenderer.on('scanDevicesResult', (event, ks) => {
@@ -73,10 +134,6 @@ ipcRenderer.on('gotStartPair', () => {
     console.log('gotStartPair');
 })
 
-// ipcRenderer.on('mainLog', (event, txt) => {
-//     console.log('[ main ] %s', txt.substring(0, txt.length - 1));
-// })
-
 ipcRenderer.on('powerResume', (event, arg) => {
     connectToATV();
 })
@@ -87,7 +144,7 @@ ipcRenderer.on('sendCommand', (event, key) => {
 })
 
 ipcRenderer.on('kbfocus', () => {
-    sendMessage('kbfocus')
+    ws_sendMessage('kbfocus')
 })
 
 ipcRenderer.on('wsserver_started', () => {
@@ -95,7 +152,7 @@ ipcRenderer.on('wsserver_started', () => {
 })
 
 ipcRenderer.on('input-change', (event, data) => {
-    sendMessage("settext", {text: data});
+    ws_sendMessage("settext", {text: data});
 });
 
 ipcRenderer.on('power_status', (event, isOn) => {
@@ -146,7 +203,7 @@ function openKeyboardClick(event) {
 function openKeyboard() {
     ipcRenderer.invoke('openInputWindow')
     setTimeout(() => { // yes, this is done but it works
-        sendMessage("gettext")
+        ws_sendMessage("gettext")
     }, 10)
 }
 
@@ -215,9 +272,7 @@ window.addEventListener('keydown', e => {
     })
 })
 
-events.on('createDropdown', (ks) => {
-    createDropdown(ks);
-})
+
 function createDropdown(ks) {
     $("#loader").hide();
     var txt = "";
@@ -316,13 +371,12 @@ function showAndFade(text) {
 async function sendCommand(k, shifted) {
     if (typeof shifted === 'undefined') shifted = false;
     console.log(`sendCommand: ${k}`)
-    if (k == 'Pause') k = 'Space';
     var rcmd = ws_keymap[k];
     if (Object.values(ws_keymap).indexOf(k) > -1) rcmd = k;
     if (typeof(rcmd) === 'function') rcmd = rcmd(state.device);
 
     var classkey = rcmd;
-    if (classkey == 'Play') classkey = 'Pause';
+    if (classkey == 'home' || classkey == 'home_hold') classkey = 'Tv';
     var el = $(`[data-key="${classkey}"]`)
     if (el.length > 0) {
         el.addClass('invert');
@@ -331,7 +385,7 @@ async function sendCommand(k, shifted) {
         }, 500);
     }
     if (rcmd === 'power') {
-        sendMessage("power_toggle");
+        ws_sendMessage("power_toggle");
         showAndFade("Power");
         return;
     }
@@ -401,7 +455,7 @@ function showKeyMap() {
                 sendCommand('LongTv')
             }, 1000);
         } else if (key == "power") {
-            sendMessage("power_toggle");
+            ws_sendMessage("power_toggle");
             showAndFade("Power");
         } else {
             sendCommand(key);
@@ -430,9 +484,7 @@ function showKeyMap() {
     $("#closeShortcuts").off('click').on('click', toggleKeyboardShortcuts);
 }
 
-events.on('connectToATV', () => {
-    connectToATV();
-})
+
 async function connectToATV() {
     if (state.connecting) return;
     state.connecting = true;
@@ -442,16 +494,23 @@ async function connectToATV() {
 
     $("#pairingElements").hide();
 
-    await ws_connect(atv_credentials);
-    createATVDropdown();
-    showKeyMap();
-    state.connecting = false;
+    const conn = ws_connect(atv_credentials);
+    if (!conn) {
+        // createATVDropdown();
+        // showKeyMap();
+        // state.connecting = false;
+        return;
+    }
+    conn.catch(() => {
+        state.connection_failure = true;
+    }).finally(() => {
+        createATVDropdown();
+        showKeyMap();
+        state.connecting = false;
+    });
 }
 
 
-events.on('saveRemote', (name, creds) => {
-    saveRemote(name, creds);
-})
 function saveRemote(name, creds) {
     var ar = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
     if (typeof creds == 'string') creds = JSON.parse(creds);
@@ -566,9 +625,6 @@ async function helpMessage()
 }
 
 
-events.on('init', (callback) => {
-    init().then(callback)
-})
 async function init() {
     handleDarkMode();
     handleContextMenu();
@@ -621,3 +677,218 @@ $(function() {
     var wp = getWorkingPath();
     $("#workingPathSpan").html(`<strong>${wp}</strong>`)
 })
+
+
+/**
+ * Websockets
+ */
+
+const WebSocket = require('ws').WebSocket;
+
+var ws_url = 'ws://localhost:8765'
+var ws_timeout_interval = 800;
+
+function ws_sendMessage(command, data) {
+    if (typeof data == "undefined") data = "";
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        state.pending.push([command, data]);
+        return;
+    }
+    while (state.pending.length > 0) {
+        var cmd_ar = state.pending.shift();
+        state.ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
+    }
+    if (command === "kbfocus") {
+        console.debug("ws_sendMessage: {cmd:%s, data:%o}", command, data)
+    } else {
+        console.log("ws_sendMessage: {cmd:%s, data:%o}", command, data)
+    }
+    state.ws.send(JSON.stringify({ cmd: command, data: data }))
+}
+
+function ws_startWebsocket() {
+    state.ws_connected = false;
+    state.ws = new WebSocket(ws_url, {
+        perMessageDeflate: false
+    });
+
+    state.ws.once('open', function open() {
+        state.ws_connected = true;
+        console.log('ws open');
+        if (state.scanWhenOpen) ws_startScan();
+        init().then(() => {
+            console.log('init complete');
+        });
+    });
+
+    state.ws.on('close', function close(code, reason) {
+        state.ws_connected = false;
+        switch (code) {
+            case 1000: //  1000 indicates a normal closure, meaning that the purpose for which the connection was established has been fulfilled.
+                console.log("WebSocket: closed");
+                break;
+            default: // Abnormal closure
+                console.warn(`WebSocket: closed abnormally ${code} ${reason}`);
+                break;
+        }
+    });
+
+    state.ws.on('message', function message(data) {
+        if (data.includes("kbfocus")) {
+            console.debug('received: %o', data.toString());
+        } else {
+            console.log('received: %o', data.toString());
+        }
+        var j = JSON.parse(data);
+        if (j.command == "scanResult") {
+            console.log(`Results: ${j.data}`)
+            createDropdown(j.data);
+        }
+        if (j.command == "pairCredentials") {
+            console.log("pairCredentials", state.ws_pairDevice, j.data);
+            saveRemote(state.ws_pairDevice, j.data);
+            localStorage.setItem('atvcreds', JSON.stringify(getCreds(state.pairDevice)));
+            connectToATV()
+        }
+        if (j.command == "connected") {
+            state.atv_connected = !!j.data?.connected;
+            state.connection_failure = j.data?.error != null;
+            events.emit("connected", state.atv_connected);
+        }
+        if (j.command == "startPair2") {
+            $("#pairStepNum").html("2");
+            $("#pairProtocolName").html("Companion");
+        }
+        if (j.command == "current-text") {
+            console.log(`current text: ${j.data}`)
+            ipcRenderer.invoke('current-text', j.data);
+        }
+        if (j.command == "kbfocus-status") {
+            ipcRenderer.invoke('kbfocus-status', j.data);
+        }
+        if (j.command == "power_status") {
+            console.log(`power status: ${j.data}`)
+            const isOn = j.data.toLowerCase() === "on";
+            ipcRenderer.invoke("power_status", isOn);
+        }
+        if (j.command == "power_error") {
+            console.log(`power error: ${j.data}`)
+            ipcRenderer.invoke("power_error", j.data);
+        }
+    });
+}
+
+function ws_startScan() {
+    state.connection_failure = false;
+    if (state.ws_connected) ws_sendMessage("scan");
+    else {
+        state.scanWhenOpen = true;
+    }
+}
+
+function ws_sendCommand(cmd) {
+    //console.log(`ws_sendCommand: ${cmd}`)
+    ws_sendMessage("key", cmd)
+}
+
+function ws_sendCommandAction(cmd, taction) {
+    // taction can be 'DoubleTap', 'Hold', 'SingleTap'
+    //console.log(`ws_sendCommandAction: ${cmd} - ${taction}`)
+    ws_sendMessage("key", { "key": cmd, "taction": taction })
+}
+
+function ws_connect(creds) {
+    if (state.ws_connecting) return;
+    state.ws_start_tm = Date.now();
+    state.ws_connecting = true;
+    console.log("ws_connect: %o", creds)
+    return new Promise((resolve, reject) => {
+        var timeout = setTimeout(() => {
+            state.ws_connecting = false;
+            state.ws_start_tm = false;
+            reject();
+        }, 15000)
+        var repeatConnectMsg = setInterval(() => {
+            if (state.ws.readyState === WebSocket.OPEN) {
+                ws_sendMessage("connect", creds);
+            } else if (state.ws.readyState === WebSocket.CLOSED || state.ws.readyState === WebSocket.CLOSING) {
+                log.error('ws_connect: websocket is closed')
+                clearInterval(repeatConnectMsg);
+                reject();
+            }
+        }, 10000)
+        ws_sendMessage("connect", creds);
+        events.removeAllListeners("connected");
+        events.once("connected", () => {
+            clearTimeout(timeout);
+            clearInterval(repeatConnectMsg);
+            state.ws_connecting = false;
+            state.ws_start_tm = false;
+            resolve();
+        });
+    })
+}
+
+function ws_startPair(dev) {
+    state.connection_failure = false;
+    console.log(`ws_startPair: ${dev}`)
+    state.ws_pairDevice = dev;
+    ws_sendMessage("startPair", dev);
+}
+
+function ws_finishPair1(code) {
+    state.connection_failure = false;
+    console.log(`ws_finishPair1: ${code}`)
+    ws_sendMessage("finishPair1", code);
+}
+
+function ws_finishPair2(code) {
+    state.connection_failure = false;
+    console.log(`ws_finishPair2: ${code}`)
+    ws_sendMessage("finishPair2", code);
+}
+
+function ws_checkWSConnection() {
+    if (!state.ws_connected && !state.ws_connecting) {
+        console.log('ws_checkWSConnection restarting websocket');
+        ws_startWebsocket();
+    }
+}
+
+function ws_init() {
+    console.log('ws_init');
+    ws_startWebsocket();
+    setTimeout(() => {
+        // not sure if needed, but server start now tries to install required python packages which can be slow
+        state.ws_watchdog = setInterval(() => {
+            ws_checkWSConnection()
+        }, 5000);
+    }, 15000)
+    window.addEventListener('online', () => {
+        state.online = true;
+        console.log('online');
+        connectToATV()
+    });
+    window.addEventListener('offline', () => {
+        state.online = false;
+        console.log('offline');
+        connectToATV()
+    });
+}
+
+function ws_incReady() {
+    //console.log('incReady');
+    ws_readyCount++;
+    if (ws_readyCount == 2) ws_init();
+}
+
+function ws_server_started() {
+    console.log(`ws_server_started`)
+    ws_incReady();
+}
+
+var ws_readyCount = 0;
+
+$(function() {
+    ws_incReady();
+});
