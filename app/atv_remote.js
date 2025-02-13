@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const EventEmitter = require('events');
+const { WebSocket } = require('ws');
 
 var { ipcRenderer } = require('electron');
 
@@ -14,31 +15,266 @@ Object.assign(console, log.functions);
  * Common
  */
 
+var ws_url = 'ws://localhost:8765'
+
+const ConnectionState = {
+    DISCONNECTED: 'disconnected',
+    CONNECTING: 'connecting',
+    CONNECTED: 'connected',
+    ERROR: 'error'
+};
+
+class ConnectionManager {
+    constructor() {
+        this.state = ConnectionState.DISCONNECTED;
+        this.wsState = ConnectionState.DISCONNECTED;
+        this.lastError = null;
+        this.reconnectAttempts = 0;
+        this.isOnline = navigator.onLine;
+        this.alive = false;
+        this.ws = null;
+        this.pendingMessages = [];
+        this.credentials = null;
+        this.reconnectTimer = null;
+        this.heartbeatInterval = null;
+        this.events = new EventEmitter();
+        
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            this.reconnectAttempts = 0;
+            this.connect();
+        });
+        
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            this.disconnect();
+        });
+    }
+
+    async connect() {
+        if (!this.isOnline) {
+            this.lastError = new Error('System is offline');
+            return;
+        }
+        
+        if (this.state === ConnectionState.CONNECTING) {
+            return; // Prevent multiple connection attempts
+        }
+
+        try {
+            this.state = ConnectionState.CONNECTING;
+            await this.connectWebsocket();
+            await this.connectATV();
+            
+            this.state = ConnectionState.CONNECTED;
+            this.reconnectAttempts = 0;
+            this.startHeartbeat();
+            this.events.emit('connected');
+        } catch (error) {
+            this.handleError(error);
+            await this.scheduleReconnect();
+        }
+    }
+
+    async connectWebsocket() {
+        return new Promise((resolve, reject) => {
+            if (this.ws) {
+                if (this.ws.readyState === WebSocket.OPEN) {
+                    resolve();
+                    return
+                } else if (this.ws.readyState === WebSocket.CONNECTING) {
+                    reject(new Error('Websocket is already connecting'));
+                    return;
+                } else if (this.ws.readyState === WebSocket.CLOSING) {
+                    this.ws.terminate();
+                }
+            }
+            this.ws =  new WebSocket(ws_url);
+            
+            const timeout = setTimeout(() => {
+                reject(new Error('Websocket connection timeout'));
+            }, 15000);
+
+            this.ws.on('open', (event) => {
+                console.log('open', event);
+                clearTimeout(timeout);
+                this.wsState = ConnectionState.CONNECTED;
+                setTimeout(() => {this.flushPendingMessages}, 2000);
+                resolve();
+            });
+
+            this.ws.on('close', (event) => {
+                console.log('close', event);
+                this.wsState = ConnectionState.DISCONNECTED;
+                this.handleWsDisconnect();
+            });
+
+            this.ws.on('error', (error) => {
+                console.log('error', error);
+                reject(error);
+            });
+
+            this.ws.on('message', (event) => {
+                event = event.toString();
+                this.handleMessage(event);
+            });
+        });
+    }
+
+    async connectATV() {
+        if (!this.credentials) {
+            throw new Error('No ATV credentials available');
+        }
+
+        return new Promise((resolve, reject) => {
+            this.sendMessage('connect', this.credentials);
+            
+            const timeout = setTimeout(() => {
+                reject(new Error('ATV connection timeout'));
+            }, 15000);
+
+            this.events.once('__connected', (connected) => {
+                clearTimeout(timeout);
+                if (connected) {
+                    resolve();
+                } else {
+                    reject(new Error('ATV connection failed'));
+                }
+            });
+        });
+    }
+
+    handleMessage(event) {
+        const data = JSON.parse(event);
+        if (event.includes("kbfocus")) {
+            console.debug('Received:', data);
+        } else {
+            console.info('Received:', data);
+        }
+
+        switch (data.command) {
+            case 'connected':
+                const connected = !!data.data?.connected;
+                this.events.emit('__connected', connected);
+                if (!connected && data.data?.error) {
+                    this.lastError = new Error(data.data.error);
+                }
+                break;
+            case 'echo_reply':
+                this.alive = true;
+                break;
+            default:
+                this.events.emit(data.command, data.data);
+        }
+    }
+
+    sendMessage(command, data = '') {
+        if (this.wsState !== ConnectionState.CONNECTED) {
+            if (command === "kbfocus") {
+                return;
+            }
+            this.pendingMessages.push([command, data]);
+            return;
+        }
+
+        if (command === "kbfocus") {
+            console.debug('Sending:', { command, data });
+        } else {
+            console.log('Sending:', { command, data });
+        }
+        this.ws.send(JSON.stringify({ cmd: command, data }));
+    }
+
+    flushPendingMessages() {
+        while (this.pendingMessages.length > 0) {
+            const [command, data] = this.pendingMessages.shift();
+            this.sendMessage(command, data);
+        }
+    }
+
+    handleError(error) {
+        this.lastError = error;
+        this.state = ConnectionState.ERROR;
+        this.events.emit('error', error);
+    }
+
+    async scheduleReconnect() {
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+        }
+
+        const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+        this.reconnectAttempts++;
+
+        this.reconnectTimer = setTimeout(() => {
+            this.connect();
+        }, delay);
+    }
+
+    startHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+
+        this.alive = true;
+        this.heartbeatInterval = setInterval(() => {
+            if (this.wsState === ConnectionState.CONNECTED) {
+                this.alive = false;
+                this.sendMessage('echo');
+            }
+        }, 30000);
+    }
+
+    handleWsDisconnect() {
+        if (this.state === ConnectionState.CONNECTED) {
+            this.state = ConnectionState.DISCONNECTED;
+            this.events.emit('disconnected');
+        }
+
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+        
+        if (this.isOnline) {
+            this.scheduleReconnect();
+        }
+    }
+
+    disconnect() {
+        if (this.ws) {
+            this.ws.close(1000, '');
+            // this.ws = null;
+        }
+        
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+        }
+        
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+        
+        this.events.emit('disconnected');
+        this.state = ConnectionState.DISCONNECTED;
+        this.wsState = ConnectionState.DISCONNECTED;
+    }
+}
+
+const connectionManager = new ConnectionManager();
+
 const state = {
     atv_credentials: false,
     pairDevice: "",
     device: false,
     playstate: false,
-    connecting: false,
-    online: true,
-    ws: false,
     qPresses: 0,
     previousKeys: [],
-
-    ws_timeout: false,
-    ws_watchdog: false,
-    scanWhenOpen: false,
-    ws_connecting: false,
-    ws_connected: false,
-    ws_start_tm: false,
-    connection_failure: false,
-    atv_connected: false,
     ws_pairDevice: "",
-    pending: [],
 };
-
-// Event emitter for cross-module communication
-const events = new EventEmitter();
 
 function _getCreds(nm) {
     var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
@@ -144,7 +380,7 @@ ipcRenderer.on('sendCommand', (event, key) => {
 })
 
 ipcRenderer.on('kbfocus', () => {
-    ws_sendMessage('kbfocus')
+    connectionManager.sendMessage('kbfocus')
 })
 
 ipcRenderer.on('wsserver_started', () => {
@@ -152,7 +388,7 @@ ipcRenderer.on('wsserver_started', () => {
 })
 
 ipcRenderer.on('input-change', (event, data) => {
-    ws_sendMessage("settext", {text: data});
+    connectionManager.sendMessage("settext", {text: data});
 });
 
 ipcRenderer.on('power_status', (event, isOn) => {
@@ -164,10 +400,7 @@ window.addEventListener('beforeunload', async e => {
     delete e['returnValue'];
     try {
         ipcRenderer.invoke('debug', 'beforeunload called')
-        if (!state.device) return;
-        state.device.removeAllListeners('message');
-        ipcRenderer.invoke('debug', 'messages unregistered')
-        await state.device.closeConnection()
+        connectionManager.disconnect();
         ipcRenderer.invoke('debug', 'connection closed')
     } catch (err) {
         console.log(err);
@@ -202,8 +435,8 @@ function openKeyboardClick(event) {
 
 function openKeyboard() {
     ipcRenderer.invoke('openInputWindow')
-    setTimeout(() => { // yes, this is done but it works
-        ws_sendMessage("gettext")
+    setTimeout(() => {
+        connectionManager.sendMessage("gettext")
     }, 10)
 }
 
@@ -272,7 +505,6 @@ window.addEventListener('keydown', e => {
     })
 })
 
-
 function createDropdown(ks) {
     $("#loader").hide();
     var txt = "";
@@ -307,11 +539,6 @@ function createDropdown(ks) {
 }
 
 function createATVDropdown() {
-    if (state.connection_failure) {
-        setStatus("No Connection");
-    } else {
-        $("#statusText").hide();
-    }
     var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
     var ks = Object.keys(creds);
     var atvc = localStorage.getItem('atvcreds')
@@ -385,7 +612,7 @@ async function sendCommand(k, shifted) {
         }, 500);
     }
     if (rcmd === 'power') {
-        ws_sendMessage("power_toggle");
+        connectionManager.sendMessage("power_toggle");
         showAndFade("Power");
         return;
     }
@@ -395,9 +622,9 @@ async function sendCommand(k, shifted) {
     var desc = desc_rcmdmap[rcmd] || rcmd;
     showAndFade(desc);
     if (shifted) {
-        ws_sendCommandAction(rcmd, "Hold")
+        connectionManager.sendMessage("key", { "key": rcmd, "taction": "Hold" });
     } else {
-        ws_sendCommand(rcmd)
+        connectionManager.sendMessage("key", rcmd);
     }
 }
 
@@ -406,17 +633,7 @@ function getWorkingPath() {
 }
 
 function isConnected() {
-    return state.atv_connected
-}
-
-async function askQuestion(msg) {
-    let options = {
-        buttons: ["No", "Yes"],
-        message: msg
-    }
-    var response = await dialog.showMessageBox(options)
-    console.log(response)
-    return response.response == 1
+    return connectionManager.state === ConnectionState.CONNECTED;
 }
 
 function startPairing(dev) {
@@ -428,16 +645,16 @@ function startPairing(dev) {
         return false;
     });
     $("#pairCodeElements").show();
-    ws_startPair(dev);
+    connectionManager.sendMessage("startPair", dev);
 }
 
 function submitCode() {
     var code = $("#pairCode").val();
     $("#pairCode").val("");
     if ($("#pairStepNum").text() == "1") {
-        ws_finishPair1(code)
+        connectionManager.sendMessage("finishPair1", code);
     } else {
-        ws_finishPair2(code)
+        connectionManager.sendMessage("finishPair2", code);
     }
 }
 
@@ -455,7 +672,7 @@ function showKeyMap() {
                 sendCommand('LongTv')
             }, 1000);
         } else if (key == "power") {
-            ws_sendMessage("power_toggle");
+            connectionManager.sendMessage("power_toggle");
             showAndFade("Power");
         } else {
             sendCommand(key);
@@ -484,32 +701,23 @@ function showKeyMap() {
     $("#closeShortcuts").off('click').on('click', toggleKeyboardShortcuts);
 }
 
-
 async function connectToATV() {
-    if (state.connecting) return;
-    state.connecting = true;
     setStatus("Connecting to ATV...");
     $("#runningElements").show();
-    atv_credentials = JSON.parse(localStorage.getItem('atvcreds'))
-
     $("#pairingElements").hide();
 
-    const conn = ws_connect(atv_credentials);
-    if (!conn) {
-        // createATVDropdown();
-        // showKeyMap();
-        // state.connecting = false;
+    const credentials = JSON.parse(localStorage.getItem('atvcreds'));
+    if (!credentials) {
+        setStatus("No credentials found");
         return;
     }
-    conn.catch(() => {
-        state.connection_failure = true;
-    }).finally(() => {
-        createATVDropdown();
-        showKeyMap();
-        state.connecting = false;
-    });
-}
 
+    connectionManager.credentials = credentials;
+    
+    await connectionManager.connect();
+    createATVDropdown();
+    showKeyMap();
+}
 
 function saveRemote(name, creds) {
     var ar = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
@@ -519,7 +727,11 @@ function saveRemote(name, creds) {
 }
 
 function setStatus(txt) {
-    $("#statusText").html(txt).show();
+    if (!txt) {
+        $("#statusText").hide();
+    } else {
+        $("#statusText").html(txt).show();
+    }
 }
 
 function startScan() {
@@ -531,7 +743,7 @@ function startScan() {
     $("#atvDropdownContainer").html("");
     setStatus("Please wait, scanning...")
     $("#pairingLoader").html(getLoader());
-    ws_startScan();
+    connectionManager.sendMessage("scan");
 }
 
 function handleDarkMode() {
@@ -553,12 +765,6 @@ function handleDarkMode() {
 function setAlwaysOnTop(tf) {
     console.log(`setAlwaysOnTop(${tf})`)
     ipcRenderer.invoke('alwaysOnTop', String(tf));
-}
-
-function alwaysOnTopToggle() {
-    var cd = $("#alwaysOnTopCheck").prop('checked')
-    localStorage.setItem('alwaysOnTopChecked', cd);
-    setAlwaysOnTop(cd);
 }
 
 var lastMenuEvent;
@@ -617,13 +823,11 @@ function toggleAlwaysOnTop(event) {
     ipcRenderer.invoke('alwaysOnTop', String(event.checked));
 }
 
-async function helpMessage()
-{
+async function helpMessage() {
     // It's not ideal to hardcode the hotkey. It would be better to get it from the main process.
     const hotkey = process.platform === 'darwin' ? 'Cmd+Shift+0' : 'Ctrl+Shift+0';
     await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: `Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nClick the question mark icon to see all keyboard shortcuts.\n\n To open this program, press ${hotkey} (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.` })
 }
-
 
 async function init() {
     handleDarkMode();
@@ -678,216 +882,75 @@ $(function() {
     $("#workingPathSpan").html(`<strong>${wp}</strong>`)
 })
 
-
 /**
  * Websockets
  */
 
-const WebSocket = require('ws').WebSocket;
+// Setup connection manager event handlers
+connectionManager.events.on('scanResult', (data) => {
+    console.log(`Results: ${data}`);
+    createDropdown(data);
+});
 
-var ws_url = 'ws://localhost:8765'
-var ws_timeout_interval = 800;
+connectionManager.events.on('pairCredentials', (data) => {
+    console.log("pairCredentials", state.ws_pairDevice, data);
+    saveRemote(state.ws_pairDevice, data);
+    localStorage.setItem('atvcreds', JSON.stringify(getCreds(state.pairDevice)));
+    connectToATV();
+});
 
-function ws_sendMessage(command, data) {
-    if (typeof data == "undefined") data = "";
-    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-        state.pending.push([command, data]);
-        return;
-    }
-    while (state.pending.length > 0) {
-        var cmd_ar = state.pending.shift();
-        state.ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
-    }
-    if (command === "kbfocus") {
-        console.debug("ws_sendMessage: {cmd:%s, data:%o}", command, data)
-    } else {
-        console.log("ws_sendMessage: {cmd:%s, data:%o}", command, data)
-    }
-    state.ws.send(JSON.stringify({ cmd: command, data: data }))
-}
+connectionManager.events.on('startPair2', () => {
+    $("#pairStepNum").html("2");
+    $("#pairProtocolName").html("Companion");
+});
 
-function ws_startWebsocket() {
-    state.ws_connected = false;
-    state.ws = new WebSocket(ws_url, {
-        perMessageDeflate: false
-    });
+connectionManager.events.on('current-text', (data) => {
+    console.log(`current text: ${data}`);
+    ipcRenderer.invoke('current-text', data);
+});
 
-    state.ws.once('open', function open() {
-        state.ws_connected = true;
-        console.log('ws open');
-        if (state.scanWhenOpen) ws_startScan();
-        init().then(() => {
-            console.log('init complete');
-        });
-    });
+connectionManager.events.on('kbfocus-status', (data) => {
+    ipcRenderer.invoke('kbfocus-status', data);
+});
 
-    state.ws.on('close', function close(code, reason) {
-        state.ws_connected = false;
-        switch (code) {
-            case 1000: //  1000 indicates a normal closure, meaning that the purpose for which the connection was established has been fulfilled.
-                console.log("WebSocket: closed");
-                break;
-            default: // Abnormal closure
-                console.warn(`WebSocket: closed abnormally ${code} ${reason}`);
-                break;
-        }
-    });
+connectionManager.events.on('power_status', (data) => {
+    console.log(`power status: ${data}`);
+    const isOn = data.toLowerCase() === "on";
+    ipcRenderer.invoke("power_status", isOn);
+});
 
-    state.ws.on('message', function message(data) {
-        if (data.includes("kbfocus")) {
-            console.debug('received: %o', data.toString());
-        } else {
-            console.log('received: %o', data.toString());
-        }
-        var j = JSON.parse(data);
-        if (j.command == "scanResult") {
-            console.log(`Results: ${j.data}`)
-            createDropdown(j.data);
-        }
-        if (j.command == "pairCredentials") {
-            console.log("pairCredentials", state.ws_pairDevice, j.data);
-            saveRemote(state.ws_pairDevice, j.data);
-            localStorage.setItem('atvcreds', JSON.stringify(getCreds(state.pairDevice)));
-            connectToATV()
-        }
-        if (j.command == "connected") {
-            state.atv_connected = !!j.data?.connected;
-            state.connection_failure = j.data?.error != null;
-            events.emit("connected", state.atv_connected);
-        }
-        if (j.command == "startPair2") {
-            $("#pairStepNum").html("2");
-            $("#pairProtocolName").html("Companion");
-        }
-        if (j.command == "current-text") {
-            console.log(`current text: ${j.data}`)
-            ipcRenderer.invoke('current-text', j.data);
-        }
-        if (j.command == "kbfocus-status") {
-            ipcRenderer.invoke('kbfocus-status', j.data);
-        }
-        if (j.command == "power_status") {
-            console.log(`power status: ${j.data}`)
-            const isOn = j.data.toLowerCase() === "on";
-            ipcRenderer.invoke("power_status", isOn);
-        }
-        if (j.command == "power_error") {
-            console.log(`power error: ${j.data}`)
-            ipcRenderer.invoke("power_error", j.data);
-        }
-    });
-}
+connectionManager.events.on('power_error', (data) => {
+    console.log(`power error: ${data}`);
+    ipcRenderer.invoke("power_error", data);
+});
 
-function ws_startScan() {
-    state.connection_failure = false;
-    if (state.ws_connected) ws_sendMessage("scan");
-    else {
-        state.scanWhenOpen = true;
-    }
-}
+connectionManager.events.on('disconnected', () => {
+    console.log('disconnected');
+    setStatus('Disconnected');
+});
 
-function ws_sendCommand(cmd) {
-    //console.log(`ws_sendCommand: ${cmd}`)
-    ws_sendMessage("key", cmd)
-}
+connectionManager.events.on('connected', () => {
+    console.log('connected');
+    setStatus(null);
+    showAndFade("Connected");
+});
 
-function ws_sendCommandAction(cmd, taction) {
-    // taction can be 'DoubleTap', 'Hold', 'SingleTap'
-    //console.log(`ws_sendCommandAction: ${cmd} - ${taction}`)
-    ws_sendMessage("key", { "key": cmd, "taction": taction })
-}
+connectionManager.events.on('error', (error) => {
+    console.warn('connectionManager error', error);
+    setStatus(error.message);
+})
 
-function ws_connect(creds) {
-    if (state.ws_connecting) return;
-    state.ws_start_tm = Date.now();
-    state.ws_connecting = true;
-    console.log("ws_connect: %o", creds)
-    return new Promise((resolve, reject) => {
-        var timeout = setTimeout(() => {
-            state.ws_connecting = false;
-            state.ws_start_tm = false;
-            reject();
-        }, 15000)
-        var repeatConnectMsg = setInterval(() => {
-            if (state.ws.readyState === WebSocket.OPEN) {
-                ws_sendMessage("connect", creds);
-            } else if (state.ws.readyState === WebSocket.CLOSED || state.ws.readyState === WebSocket.CLOSING) {
-                log.error('ws_connect: websocket is closed')
-                clearInterval(repeatConnectMsg);
-                reject();
-            }
-        }, 10000)
-        ws_sendMessage("connect", creds);
-        events.removeAllListeners("connected");
-        events.once("connected", () => {
-            clearTimeout(timeout);
-            clearInterval(repeatConnectMsg);
-            state.ws_connecting = false;
-            state.ws_start_tm = false;
-            resolve();
-        });
-    })
-}
-
-function ws_startPair(dev) {
-    state.connection_failure = false;
-    console.log(`ws_startPair: ${dev}`)
-    state.ws_pairDevice = dev;
-    ws_sendMessage("startPair", dev);
-}
-
-function ws_finishPair1(code) {
-    state.connection_failure = false;
-    console.log(`ws_finishPair1: ${code}`)
-    ws_sendMessage("finishPair1", code);
-}
-
-function ws_finishPair2(code) {
-    state.connection_failure = false;
-    console.log(`ws_finishPair2: ${code}`)
-    ws_sendMessage("finishPair2", code);
-}
-
-function ws_checkWSConnection() {
-    if (!state.ws_connected && !state.ws_connecting) {
-        console.log('ws_checkWSConnection restarting websocket');
-        ws_startWebsocket();
-    }
-}
-
-function ws_init() {
-    console.log('ws_init');
-    ws_startWebsocket();
-    setTimeout(() => {
-        // not sure if needed, but server start now tries to install required python packages which can be slow
-        state.ws_watchdog = setInterval(() => {
-            ws_checkWSConnection()
-        }, 5000);
-    }, 15000)
-    window.addEventListener('online', () => {
-        state.online = true;
-        console.log('online');
-        connectToATV()
-    });
-    window.addEventListener('offline', () => {
-        state.online = false;
-        console.log('offline');
-        connectToATV()
-    });
-}
+var ws_readyCount = 0;
 
 function ws_incReady() {
-    //console.log('incReady');
     ws_readyCount++;
-    if (ws_readyCount == 2) ws_init();
+    if (ws_readyCount == 2) init();
 }
 
 function ws_server_started() {
     console.log(`ws_server_started`)
     ws_incReady();
 }
-
-var ws_readyCount = 0;
 
 $(function() {
     ws_incReady();
