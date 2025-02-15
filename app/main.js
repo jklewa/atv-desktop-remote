@@ -86,19 +86,17 @@ function createInputWindow() {
         hide: true,
         width: 600,
         height: 200,
-        parent: win, // always above main window
         minimizable: false,
         maximizable: false
     });
+    secondWindow.setAlwaysOnTop(true, "modal-panel");
     require('@electron/remote/main').enable(secondWindow.webContents)
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
-        if (mb.window.isAlwaysOnTop()) return;
         showWindowThrottle();
     });
     secondWindow.on("blur", () => {
-        if (mb.window.isAlwaysOnTop()) return;
         showWindowThrottle();
     })
     secondWindow.setMenu(null);
