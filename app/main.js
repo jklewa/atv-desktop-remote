@@ -86,6 +86,7 @@ function createInputWindow() {
         hide: true,
         width: 600,
         height: 200,
+        parent: win, // always above main window
         minimizable: false,
         maximizable: false
     });
