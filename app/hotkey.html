@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Change Accelerator / Hotkey</title>
+    <title>Change Hotkey</title>
     <script>
         window.jQuery = window.$ = require('jquery');
         require('./js/select2.min.js')($)
@@ -44,10 +44,10 @@
         <div class="pure-u-1-1">
 
             <div class="hotkeys-container">
-                <label for="hotkeys">Accelerator</label>
+                <label for="hotkeys">Hotkey</label>
                 <select id="hotkeys" class="hotkeys-multiple" name="keys[]" multiple="multiple">
                 </select>
-                <label for="parsed-hotkeys">Current Accelerator Value</label>
+                <label for="parsed-hotkeys">Current Hotkey Value</label>
                 <input type="text" disabled id="parsed-hotkeys" name="parsed-hotkeys" readonly>
                 <div id="buttons">
                     <button class="pure-button" onclick="saveHotkey()">Save</button>
@@ -56,8 +56,8 @@
             </div>
             <div class="info">
 
-                Hotkeys will be registered when this window is closed. For more infromation about hotkeys/accelerators, go to
-                <a href="#" id="">https://www.electronjs.org/docs/latest/api/accelerator</a><br>
+                Hotkeys will be registered when this window is closed. For more information about hotkeys, go to
+                <a href="https://www.electronjs.org/docs/latest/api/accelerator" id="accellink">https://www.electronjs.org/docs/latest/api/accelerator</a><br>
                 The default value is <span id="defaultHotkey"></span>
             </div>
             </div>
@@ -84,14 +84,8 @@
             return false;
         }
         function saveHotkey() {
-            var hotkeys = $('#parsed-hotkeys').val();
-            if (hotkeys.length === 0) {
-                fs.unlinkSync(hotkeyPath);
-                return;
-            } else {
-                fs.writeFileSync(hotkeyPath, hotkeys);
-            }
-
+            var hotkeys = $('#parsed-hotkeys').val() || "";
+            fs.writeFileSync(hotkeyPath, hotkeys);
             closeWindow();
         }
         function hotkeysFromParsed(parsedHotkeys) {
@@ -134,7 +128,7 @@
             }
             $('#hotkeys').select2();
             $('#hotkeys').select2({
-                placeholder: 'Select hotkeys',
+                placeholder: 'Select keys for combination',
                 allowClear: true
             });
             $('#hotkeys').on('change', function() {

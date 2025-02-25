@@ -93,11 +93,11 @@
                 }
             }
             // remove any existing listeners
-            textInput.removeEventListener('input', inputHandler);
-            document.removeEventListener('keydown', keydownHandler);
-            // register new listeners
-            textInput.addEventListener('input', inputHandler);
-            document.addEventListener('keydown', keydownHandler);
+            $(textInput).off('input');
+            $(document).off('keydown');
+            // add new listeners
+            $(textInput).on('input', inputHandler);
+            $(document).on('keydown', keydownHandler);
         }
         ipcRenderer.on('kbfocus-status', (event, arg) => {
             kbHasFocus = arg === "focused";

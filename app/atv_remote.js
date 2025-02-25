@@ -415,6 +415,8 @@ window.addEventListener("beforeunload", async (e) => {
     }
 });
 
+
+ipcRenderer.on("loadWindowHotkey", loadWindowHotkey);
 function loadWindowHotkey() {
     // It's not ideal to hardcode the hotkey. It would be better to get it from the main process.
     let hotkey = process.platform === "darwin" ? "Cmd+Shift+0" : "Ctrl+Shift+0";
@@ -422,8 +424,8 @@ function loadWindowHotkey() {
     if (fs.existsSync(hotkeyPath)) {
         hotkey = fs.readFileSync(hotkeyPath, "utf8").trim();
     }
-    hotkey = hotkey.replaceAll("+", "<wbr>+");
-    $(`[data-shortcut="show"]`).html(hotkey);
+    hotkey = hotkey !== "" ? hotkey.replaceAll("+", "<wbr>+") : "<i>Unset</i>";
+    $(`[data-shortcut="show"]`).html(hotkey).off('click').on('click', changeHotkeyClick);
 }
 
 function toggleKeyboardShortcuts() {
@@ -873,7 +875,7 @@ function handleContextMenu() {
         { role: "about", label: "About" },
         { type: "separator" },
         { label: "Appearance", submenu: subMenu, click: subMenuClick },
-        { label: "Change hotkey/accelerator", click: changeHotkeyClick },
+        { label: "Change hotkey", click: changeHotkeyClick },
         { type: "separator" },
         { label: "Quit", click: confirmExit },
     ]);

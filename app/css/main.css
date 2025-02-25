@@ -476,6 +476,24 @@ div.footer {
     margin-left: 10px;
 }
 
+.shortcutKey[data-shortcut="show"] {
+    border: dotted;
+}
+
+.shortcutKey[data-shortcut="show"]:hover {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+}
+
+.darkMode .shortcutKey[data-shortcut="show"] {
+    color: white;
+}
+
+.darkMode .shortcutKey[data-shortcut="show"]:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: black;
+}
+
 .darkMode .shortcutKey {
     background: #333;
 }

@@ -74,6 +74,13 @@ function createHotkeyWindow() {
             return false;
         }
         hotkeyWindow.hide();
+        win.webContents.send("loadWindowHotkey");
+        showWindowThrottle();
+    });
+    hotkeyWindow.on('blur', (event) => {
+        event.preventDefault();
+        hotkeyWindow.hide();
+        showWindowThrottle();
     });
 }
 
@@ -288,7 +295,10 @@ function registerHotkeys() {
     }
     if (fs.existsSync(hotkeyPath)) {
         const hotkeysContent = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
-        if (hotkeysContent.indexOf(",") > -1) {
+        if (hotkeysContent === "") {
+            console.log(`Empty ${hotkeyPath}, disabling hotkeys`)
+            return true;
+        } else if (hotkeysContent.indexOf(",") > -1) {
             hotkeys = hotkeysContent.split(',').map(el => { return el.trim() });
         } else {
             hotkeys = [hotkeysContent];
