@@ -94,9 +94,11 @@ function createInputWindow() {
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
+        secondWindow.webContents.send('closeInputWindow');
         showWindowThrottle();
     });
     secondWindow.on("blur", () => {
+        secondWindow.webContents.send('closeInputWindow');
         showWindowThrottle();
     })
     secondWindow.setMenu(null);
@@ -180,6 +182,7 @@ function createWindow() {
         })
         ipcMain.handle('openInputWindow', (event, arg) => {
             secondWindow.show();
+            secondWindow.webContents.send('openInputWindow');
         });
         ipcMain.handle('current-text', (event, arg) => {
             console.log('current-text', arg);

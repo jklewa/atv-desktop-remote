@@ -149,7 +149,11 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
     if cmd == "kbfocus":
         if not active_device:
             return
-        kbfocus = active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Focused
+        kbfocus = "unknown"
+        if active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Focused:
+            kbfocus = "focused"
+        elif active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Unfocused:
+            kbfocus = "unfocused"
         await sendCommand(websocket, "kbfocus-status", kbfocus)
     
     if cmd == "settext":
