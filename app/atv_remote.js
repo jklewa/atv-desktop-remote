@@ -278,7 +278,6 @@ const state = {
     playstate: false,
     qPresses: 0,
     previousKeys: [],
-    ws_pairDevice: "",
 };
 
 function _getCreds(nm) {
@@ -300,7 +299,7 @@ function _getCreds(nm) {
 function getCreds(nm) {
     var r = _getCreds(nm);
     while (typeof r == "string") r = JSON.parse(r);
-    return r;
+    return r || false;
 }
 
 function setCreds(vl) {
@@ -360,23 +359,6 @@ const desc_rcmdmap = {
     up: "Up",
     down: "Down",
 };
-
-ipcRenderer.on("scanDevicesResult", (event, ks) => {
-    createDropdown(ks);
-});
-
-ipcRenderer.on("pairCredentials", (event, arg) => {
-    saveRemote(state.pairDevice, arg);
-    localStorage.setItem(
-        "atvcreds",
-        JSON.stringify(getCreds(state.pairDevice))
-    );
-    connectToATV();
-});
-
-ipcRenderer.on("gotStartPair", () => {
-    console.log("gotStartPair");
-});
 
 ipcRenderer.on("powerResume", (event, arg) => {
     connectToATV();
@@ -745,7 +727,7 @@ async function connectToATV() {
     $("#runningElements").show();
     $("#pairingElements").hide();
 
-    const credentials = JSON.parse(localStorage.getItem("atvcreds"));
+    const credentials = JSON.parse(localStorage.getItem("atvcreds") || "false");
     if (!credentials) {
         setStatus("No credentials found");
         return;
@@ -782,7 +764,9 @@ function startScan() {
     $("#atvDropdownContainer").html("");
     setStatus("Please wait, scanning...");
     $("#pairingLoader").html(getLoader());
-    connectionManager.sendMessage("scan");
+    connectionManager.connectWebsocket().then(() => {
+        connectionManager.sendMessage("scan");
+    });
 }
 
 function handleDarkMode() {
@@ -967,8 +951,8 @@ connectionManager.events.on("scanResult", (data) => {
 });
 
 connectionManager.events.on("pairCredentials", (data) => {
-    console.log("pairCredentials", state.ws_pairDevice, data);
-    saveRemote(state.ws_pairDevice, data);
+    console.log("pairCredentials", state.pairDevice, data);
+    saveRemote(state.pairDevice, data);
     localStorage.setItem(
         "atvcreds",
         JSON.stringify(getCreds(state.pairDevice))

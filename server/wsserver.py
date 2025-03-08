@@ -101,7 +101,7 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         await pairing.finish()
         if pairing.has_paired:
             logger.info("Paired with device!")
-            logger.info("Credentials:", pairing.service.credentials)
+            logger.info("Credentials: %s", pairing.service.credentials)
         else:
             logger.info("Did not pair with device!")
             return
@@ -124,7 +124,7 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         await pairing.finish()
         if pairing.has_paired:
             logger.info("Paired with device!")
-            logger.info("Credentials:", pairing.service.credentials)
+            logger.info("Credentials: %s", pairing.service.credentials)
         else:
             logger.info("Did not pair with device!")
         pairing_creds["Companion"] = pairing.service.credentials
@@ -138,7 +138,7 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         await pairing.finish()
         if pairing.has_paired:
             logger.info("Paired with device!")
-            logger.info("Credentials:", pairing.service.credentials)
+            logger.info("Credentials: %s", pairing.service.credentials)
         else:
             logger.info("Did not pair with device!")
         creds = pairing.service.credentials
