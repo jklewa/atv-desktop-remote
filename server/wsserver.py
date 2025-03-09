@@ -95,10 +95,16 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         await pairing.begin()
 
     if cmd == "finishPair1":
-        logger.info("finishPair %s" % (data))
+        logger.info("finishPair1 %s" % (data))
         pairing = active_pairing
         pairing.pin(data)
-        await pairing.finish()
+        try:
+            await pairing.finish()
+        except pyatv.exceptions.PairingError:
+            logger.exception("Pairing error in finishPair1")
+            await sendCommand(websocket, "pairError", "Bad PIN")
+            await pairing.begin()
+            return
         if pairing.has_paired:
             logger.info("Paired with device!")
             logger.info("Credentials: %s", pairing.service.credentials)
@@ -118,10 +124,19 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         await pairing.begin()
 
     if cmd == "finishPair2":
-        logger.info("finishPair %s" % (data))
+        logger.info("finishPair2 %s" % (data))
         pairing = active_pairing
         pairing.pin(data)
-        await pairing.finish()
+        try:
+            await pairing.finish()
+        except pyatv.exceptions.PairingError:
+            logger.exception("Pairing error in finishPair2")
+            await sendCommand(websocket, "pairError", "Bad PIN")
+            await pairing.close()
+            pairing = await pair(pairing_atv, Protocol.Companion, loop)
+            active_pairing = pairing
+            await pairing.begin()
+            return
         if pairing.has_paired:
             logger.info("Paired with device!")
             logger.info("Credentials: %s", pairing.service.credentials)
@@ -298,7 +313,11 @@ async def ws_main(websocket: websockets.asyncio.server.ServerConnection):
             logger.error("Error parsing message: %s\n%s" % (str(ex), message))
             continue
         
-        await parseRequest(j, websocket)
+        try:
+            await parseRequest(j, websocket)
+        except Exception:
+            logger.exception("Unhandled Exception in parseRequest:")
+            raise
 
 async def main(port: int):
     global keep_running

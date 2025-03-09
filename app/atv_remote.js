@@ -361,6 +361,7 @@ const desc_rcmdmap = {
 };
 
 ipcRenderer.on("powerResume", (event, arg) => {
+    console.log("powerResume -> connectToATV");
     connectToATV();
 });
 
@@ -953,16 +954,18 @@ connectionManager.events.on("scanResult", (data) => {
 connectionManager.events.on("pairCredentials", (data) => {
     console.log("pairCredentials", state.pairDevice, data);
     saveRemote(state.pairDevice, data);
-    localStorage.setItem(
-        "atvcreds",
-        JSON.stringify(getCreds(state.pairDevice))
-    );
+    setCreds(state.pairDevice);
     connectToATV();
 });
 
 connectionManager.events.on("startPair2", () => {
-    $("#pairStepNum").html("2");
+    $("#pairError").text("");
+    $("#pairStepNum").text("2");
     $("#pairProtocolName").html("Companion");
+});
+
+connectionManager.events.on("pairError", (error) => {
+    $("#pairError").text(error);
 });
 
 connectionManager.events.on("current-text", (data) => {
