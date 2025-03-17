@@ -90,9 +90,13 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         atv = scan_lookup[data]
         pairing_atv = atv
         logger.info("pairing atv %s" % (atv))
-        pairing = await pair(atv, Protocol.AirPlay, loop)
-        active_pairing = pairing
-        await pairing.begin()
+        try:
+            pairing = await pair(atv, Protocol.AirPlay, loop)
+            active_pairing = pairing
+            await pairing.begin()
+        except Exception as ex:
+            logger.exception(f"Pairing error in startPair")
+            await sendCommand(websocket, "pairError", str(ex))
 
     if cmd == "finishPair1":
         logger.info("finishPair1 %s" % (data))
@@ -116,12 +120,15 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
         nj = {"credentials": creds, "identifier": id}
         pairing_creds = nj
         await sendCommand(websocket, "startPair2")
-        #await sendCommand(websocket, "pairCredentials1", nj)
         atv = pairing_atv
-        logger.info("pairing atv %s" % (atv))
-        pairing = await pair(atv, Protocol.Companion, loop)
-        active_pairing = pairing
-        await pairing.begin()
+        try:
+            logger.info("pairing atv %s" % (atv))
+            pairing = await pair(atv, Protocol.Companion, loop)
+            active_pairing = pairing
+            await pairing.begin()
+        except (pyatv.exceptions.PairingError, pyatv.exceptions.NoServiceError) as e:
+            logger.exception(f"Pairing error in finishPair1[startPair2]")
+            await sendCommand(websocket, "pairError", str(e))
 
     if cmd == "finishPair2":
         logger.info("finishPair2 %s" % (data))
@@ -133,9 +140,13 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
             logger.exception("Pairing error in finishPair2")
             await sendCommand(websocket, "pairError", "Bad PIN")
             await pairing.close()
-            pairing = await pair(pairing_atv, Protocol.Companion, loop)
-            active_pairing = pairing
-            await pairing.begin()
+            try:
+                pairing = await pair(pairing_atv, Protocol.Companion, loop)
+                active_pairing = pairing
+                await pairing.begin()
+            except (pyatv.exceptions.PairingError, pyatv.exceptions.NoServiceError) as e:
+                logger.exception(f"Pairing error in finishPair2[restartPair2]")
+                await sendCommand(websocket, "pairError", str(e))
             return
         if pairing.has_paired:
             logger.info("Paired with device!")
@@ -213,11 +224,15 @@ async def parseRequest(j: dict, websocket: websockets.asyncio.server.ServerConne
             kblistener = ATVKeyboardListener()
             device.keyboard.listener = kblistener
             await sendCommand(websocket, "connected", {"connected": True})
-            power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
-            await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
         except Exception as ex:
             logger.error(f"Failed to connect, error: {ex}")
             await sendCommand(websocket, "connected", {"connected": False, "error": str(ex)})
+        try:
+            power_status = "on" if device.power.power_state == pyatv.const.PowerState.On else "off"
+            await sendCommand(websocket, "power_status", power_status)  # Check power status after connecting
+        except Exception as ex:
+            logger.error(f"Error getting power status: {ex}")
+            await sendCommand(websocket, "power_error", str(ex))
     
     if cmd == "key":
         if not active_remote:
