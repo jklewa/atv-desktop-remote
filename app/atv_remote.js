@@ -142,6 +142,10 @@ class ConnectionManager {
             this.events.once("__connected", (connected) => {
                 clearTimeout(timeout);
                 if (connected) {
+                    this.events.once("__disconnected", (error) => {
+                        this.lastError = new Error(error) || null;
+                        this.disconnect();
+                    });
                     resolve();
                 } else {
                     reject(new Error("ATV connection failed"));
@@ -165,6 +169,9 @@ class ConnectionManager {
                 if (!connected && data.data?.error) {
                     this.lastError = new Error(data.data.error);
                 }
+                break;
+            case "disconnected":
+                this.events.emit("__disconnected", data.data?.error);
                 break;
             case "echo_reply":
                 this.alive = true;
@@ -990,7 +997,12 @@ connectionManager.events.on("power_error", (data) => {
 
 connectionManager.events.on("disconnected", () => {
     console.log("disconnected");
-    setStatus("Disconnected");
+    const message = connectionManager.lastError ? (
+        `Disconnected<br><small>${connectionManager.lastError.message || connectionManager.lastError}</small>`
+    ) : (
+        "Disconnected"
+    );
+    setStatus(message);
 });
 
 connectionManager.events.on("connected", () => {
@@ -1001,7 +1013,7 @@ connectionManager.events.on("connected", () => {
 
 connectionManager.events.on("error", (error) => {
     console.warn("connectionManager error", error);
-    setStatus(error.message);
+    setStatus(`<small>${error.message}</small>`);
 });
 
 var ws_readyCount = 0;

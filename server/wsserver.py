@@ -318,6 +318,13 @@ async def check_exit_file():
             sys.exit(0)
 
 
+async def handle_disconnected_device(websocket, ex):
+    logger.exception(f"Device was disconnected. Resetting globals.")
+    await close_active_device()
+    await reset_globals()
+    await sendCommand(websocket, "disconnected", {"error": str(ex)})
+
+
 async def ws_main(websocket: websockets.asyncio.server.ServerConnection):
     #await reset_globals()
     await close_active_device()
@@ -330,6 +337,8 @@ async def ws_main(websocket: websockets.asyncio.server.ServerConnection):
         
         try:
             await parseRequest(j, websocket)
+        except pyatv.exceptions.BlockedStateError as ex:
+            await handle_disconnected_device(websocket, ex)
         except Exception:
             logger.exception("Unhandled Exception in parseRequest:")
             raise
