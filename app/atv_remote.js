@@ -143,7 +143,7 @@ class ConnectionManager {
                 clearTimeout(timeout);
                 if (connected) {
                     this.events.once("__disconnected", (error) => {
-                        this.lastError = new Error(error) || null;
+                        this.lastError = error ? new Error(error) : null;
                         this.disconnect();
                     });
                     resolve();

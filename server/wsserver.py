@@ -339,6 +339,9 @@ async def ws_main(websocket: websockets.asyncio.server.ServerConnection):
             await parseRequest(j, websocket)
         except pyatv.exceptions.BlockedStateError as ex:
             await handle_disconnected_device(websocket, ex)
+        except pyatv.exceptions.ProtocolError as ex:
+            logger.exception("ProtocolError in parseRequest:")
+            await sendCommand(websocket, "error", str(ex))
         except Exception:
             logger.exception("Unhandled Exception in parseRequest:")
             raise
