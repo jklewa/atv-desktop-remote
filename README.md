@@ -64,6 +64,8 @@ Minimum Requirements: macOS 11 (Big Sur), Windows 10, Ubuntu 18.04, Fedora 32, D
 
 This is a fork of the original project: [bsharper/atv-desktop-remote](https://github.com/bsharper/atv-desktop-remote)
 
+**What's New in This Fork?** See [CHANGES_IN_THIS_FORK.md](CHANGES_IN_THIS_FORK.md) for a comprehensive list of user experience improvements and developer enhancements that distinguish this fork from the original project.
+
 This project is built using [pyatv.](https://pyatv.dev/)
 
 Support the original author **bsharper**:
