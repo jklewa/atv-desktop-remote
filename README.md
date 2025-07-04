@@ -18,6 +18,23 @@ Python 3.9+ is required, and can be downloaded from [python.org](https://www.pyt
 
 Minimum Requirements: macOS 11 (Big Sur), Windows 10, Ubuntu 18.04, Fedora 32, Debian 10
 
+## What's New in This Fork?
+
+This is a fork of [bsharper/atv-desktop-remote](https://github.com/bsharper/atv-desktop-remote) with significant enhancements:
+
+**Key User Features:**
+- **Power Controls** - Direct Apple TV power on/off from the app
+- **Enhanced Help & Shortcuts** - Keyboard overlay and improved onboarding
+- **Better Logging & Error Handling** - User-friendly error dialogs and persistent logs
+- **UI Improvements** - Draggable interface, refined dark mode, reorganized menus
+
+**Developer Improvements:**
+- **Automated Builds** - GitHub Actions for multi-platform releases
+- **Modernized Structure** - Cleaned up codebase with better dependency management
+- **Enhanced Stability** - Robust error handling and cross-platform improvements
+
+📄 **Full Details:** See [CHANGES_IN_THIS_FORK.md](CHANGES_IN_THIS_FORK.md) for a comprehensive list of all improvements and enhancements.
+
 ## Usage
 
  1. All of the keys are mapped to the keyboard when the application is open (pressing return or enter on the keyboard for select, delete for Menu, etc).
@@ -61,10 +78,6 @@ Minimum Requirements: macOS 11 (Big Sur), Windows 10, Ubuntu 18.04, Fedora 32, D
    * This will prompt you to update package locks in both `.` and `app/`
 
 ## Notes
-
-This is a fork of the original project: [bsharper/atv-desktop-remote](https://github.com/bsharper/atv-desktop-remote)
-
-**What's New in This Fork?** See [CHANGES_IN_THIS_FORK.md](CHANGES_IN_THIS_FORK.md) for a comprehensive list of user experience improvements and developer enhancements that distinguish this fork from the original project.
 
 This project is built using [pyatv.](https://pyatv.dev/)
 

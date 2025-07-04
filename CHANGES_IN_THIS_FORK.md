@@ -2,9 +2,21 @@
 
 This fork of [bsharper/atv-desktop-remote](https://github.com/bsharper/atv-desktop-remote) includes significant enhancements that improve both the user experience and developer workflow. The changes are organized into two main categories:
 
-## User Experience Improvements
+## User-Facing Improvements
 
 These changes directly enhance the functionality and usability for end users:
+
+### **Power Controls**
+- Directly control the Apple TV power state from the app, including power on/off functionality
+
+### **Keyboard Shortcuts Overlay & Improved Help**
+- Accessible overlay lists all keyboard shortcuts; in-app help dialog and FAQ provide smoother onboarding and assistance
+
+### **Persistent & User-Friendly Logging**
+- Enhanced error reporting with persistent logs and user-facing error dialogs for easier troubleshooting
+
+### **User Interface Enhancements**
+- Refined interface with a draggable grab bar, reorganized menus, improved dark mode, and more accessible help dialogs
 
 ### **Dark Mode Support**
 - Full dark mode implementation with automatic system theme detection
@@ -35,9 +47,21 @@ These changes directly enhance the functionality and usability for end users:
 - Better platform detection and feature adaptation
 - Enhanced file path handling across different operating systems
 
-## Developer and Project Enhancements
+## Developer & Project Enhancements
 
 These changes improve the development workflow, build process, and project maintainability:
+
+### **Project Structure Modernization**
+- Cleaned up legacy scripts, improved dependency management, and added support for Mac app notarization
+
+### **Stability & Cross-Platform Improvements**
+- More robust error handling and server management, improved keyboard shortcut support across platforms, and enhanced packaging for all OSes
+
+### **Automated Builds & Releases**
+- Added GitHub Actions workflows for automated multi-platform builds and releases
+
+### **Screenshot Automation**
+- Tools for automatic UI screenshot generation to improve documentation and maintain visual consistency
 
 ### **Automated CI/CD Pipeline**
 - GitHub Actions workflow for automated builds across multiple platforms
